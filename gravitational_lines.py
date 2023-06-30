@@ -19,7 +19,7 @@ sun_loc = np.array([150e9, 0])
 moon_loc = np.array([384400e3, 0])
 
 # in SI units
-gravitational_parameter_sun = 0
+gravitational_parameter_sun = pk.MU_SUN
 gravitational_parameter_earth = pk.MU_EARTH
 gravitational_parameter_moon = 4.9048695e12
 

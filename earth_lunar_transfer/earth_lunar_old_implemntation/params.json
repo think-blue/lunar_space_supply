@@ -1,0 +1,27 @@
+{
+  "multiprocessing": {
+    "epochs": 300,
+    "n_workers": 64,
+    "batch_size": 11,
+    "mass": 100,
+    "fuel_mass": 600,
+    "max_thrust": 0.1,
+    "specific_impulse": 3000,
+    "start_mjd2000_epoch": 2851.806623119861,
+    "num_days": 302,
+    "n_time_steps": 22,
+    "exp_name": "earth_lunar_transfer_mp"
+  },
+  "gpu": {
+    "epochs": 64000,
+    "batch_size": 28,
+    "mass": 100,
+    "fuel_mass": 600,
+    "max_thrust": 0.1,
+    "specific_impulse": 3000,
+    "start_mjd2000_epoch": 2851.806623119861,
+    "num_days": 302,
+    "n_time_steps": 22,
+    "exp_name": "earth_lunar_transfer_gpu"
+  }
+}
