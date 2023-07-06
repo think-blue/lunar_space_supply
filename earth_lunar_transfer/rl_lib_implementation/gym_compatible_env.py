@@ -5,10 +5,6 @@ import pykep as pk
 from scipy.integrate import odeint
 
 
-# import ray
-# from ray.rllib.algorithms import a2c
-
-
 class LunarEnvironment(gym.Env):
     MU_MOON = 4.9048695e12
     MU_EARTH = pk.MU_EARTH
