@@ -42,8 +42,8 @@ class LunarEnvironment(gym.Env):
         self.max_time_steps = self.num_epochs / self.time_step_duration
 
         # orbit's radius
-        self.source_object_orbit = env_config["source_object_orbit"]
-        self.destination_object_orbit = env_config["dest_object_orbit"]
+        self.source_object_orbit_radius = env_config["source_object_orbit_radius"]
+        self.destination_object_orbit_radius = env_config["dest_object_orbit_radius"]
         self.source_inclination_angle = env_config["source_inclination_angle"]  # phi
         self.source_azimuthal_angle = env_config["source_azimuthal_angle"]  # theta
         self.dest_inclination_angle = env_config["dest_inclination_angle"]  # phi
@@ -78,16 +78,18 @@ class LunarEnvironment(gym.Env):
 
         spacecraft_mass = self.env_config["payload_mass"] + self.env_config["fuel_mass"]
         source_planet_eph = self.source_planet.eph(self.current_epoch)
-        spacecraft_initial_speed = self._get_orbital_speed(self.source_object_orbit, self.MU_MOON)
+        spacecraft_initial_speed = self._get_orbital_speed(self.source_object_orbit_radius, self.MU_MOON)
         spacecraft_position, spacecraft_velocity = self._get_eph_from_orbital_angles(self.source_azimuthal_angle,
                                                                                      self.source_inclination_angle,
-                                                                                     self.source_object_orbit,
+                                                                                     self.source_object_orbit_radius,
                                                                                      spacecraft_initial_speed,
                                                                                      source_planet_eph)
         destination_planet_eph = self.destination_planet.eph(self.current_epoch)
-        target_speed = self._get_orbital_speed(self.destination_object_orbit, self.MU_EARTH)
+        target_speed = self._get_orbital_speed(self.destination_object_orbit_radius, self.MU_EARTH)
         target_position, target_velocity = self._get_eph_from_orbital_angles(self.dest_azimuthal_angle,
-                                                                             self.dest_inclination_angle, target_speed,
+                                                                             self.dest_inclination_angle,
+                                                                             self.destination_object_orbit_radius,
+                                                                             target_speed,
                                                                              destination_planet_eph)
         self.time_step = 0
         state = dict(position=spacecraft_position, velocity=spacecraft_velocity,
@@ -186,15 +188,18 @@ class LunarEnvironment(gym.Env):
         # return reward, reward_components, detailed_spacecraft_state
 
     def _get_reward(self):
+        """
+        Everything is in SI units
+        """
         # static destination based on the end epoch
         dest_position = self.target_position
-        position_error = (self.spacecraft_position - dest_position) / pk.AU  # In astronomical units
+        position_error = (self.spacecraft_position - dest_position) / pk.AU  # astronomical units
         positional_error_magnitude = np.linalg.norm(position_error)
-        positional_reward = - positional_error_magnitude * 10
+        positional_reward = - positional_error_magnitude
 
         mass_reward = -(1 - (self.fuel_mass / self.env_config["fuel_mass"]))
 
-        velocity_error = np.linalg.norm(self.spacecraft_velocity - self.target_velocity) / pk.AU
+        velocity_error = np.linalg.norm(self.spacecraft_velocity - self.target_velocity) / pk.AU  # astronomical units
         reward = 100 + positional_reward + mass_reward + velocity_error
 
         return reward
