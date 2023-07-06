@@ -12,8 +12,11 @@ from scipy.integrate import odeint
 class LunarEnvironment(gym.Env):
     MU_MOON = 4.9048695e12
     MU_EARTH = pk.MU_EARTH
+    MU_SUN = pk.MU_SUN
 
     def __init__(self, env_config):
+        """the environment where the
+        target position and target velocity is fixed"""
 
         self.env_config = env_config
         self.action_space = Box(-1, 1, (3,), dtype=np.float32)
@@ -68,11 +71,12 @@ class LunarEnvironment(gym.Env):
         self.delta_velocity = None
         self.time_step = None
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        """resets the environment to the initial state based on the environment config parameters passed"""
         self.fuel_mass = self.env_config["fuel_mass"]
         self.current_epoch = self.env_config["start_epoch"]
 
-        spacecraft_mass = self.env_config["payload"] + self.env_config["fuel_mass"]
+        spacecraft_mass = self.env_config["payload_mass"] + self.env_config["fuel_mass"]
         source_planet_eph = self.source_planet.eph(self.current_epoch)
         spacecraft_initial_speed = self._get_orbital_speed(self.source_object_orbit, self.MU_MOON)
         spacecraft_position, spacecraft_velocity = self._get_eph_from_orbital_angles(self.source_azimuthal_angle,
@@ -101,7 +105,7 @@ class LunarEnvironment(gym.Env):
 
         self.target_position = target_position
         self.target_velocity = target_velocity
-        return state
+        return state, None
 
     def _get_orbital_speed(self, radius, mu):
         speed = np.sqrt(2 * mu) / radius
@@ -121,10 +125,19 @@ class LunarEnvironment(gym.Env):
 
     def step(self, action):
         # todo: add threshold for position and velocity
-        if np.linalg.norm(self.delta_position) == 0 and np.linalg.norm(self.delta_velocity) == 0:
-            done = True
+        position_threshold = 0
+        velocity_threshold = 0
 
-        # todo: add out of bounds values
+        # terminal state
+        terminated = False
+        truncated = False
+        info = None
+
+        if np.linalg.norm(self.delta_position) <= position_threshold \
+                and np.linalg.norm(self.delta_velocity) <= velocity_threshold:
+            terminated = True
+
+        # truncated state time limit, out of bounds, out of fuel todo: add out of bounds values
         if self.time_step > self.max_time_steps:
             truncated = True
 
@@ -141,23 +154,38 @@ class LunarEnvironment(gym.Env):
                                            # todo: verify this function and it's working
                                            args=(action, (self.payload_mass + self.fuel_mass), self.source_planet,
                                                  self.destination_planet,
-                                                 self.epoch))
+                                                 self.current_epoch))
+        # todo: check what odeint.T does
         spacecraft_pos = np.array(detailed_spacecraft_state[-1, :3])
         spacecraft_vel = np.array(detailed_spacecraft_state[-1, 3:])
-        mass_ejected = self.__mass_ejected(action, len(time_array))
+
+        # todo: verify mass ejected function
+        mass_ejected = self._mass_ejected(action, len(time_array))
 
         self._update_state(
             fuel_mass=self.fuel_mass - mass_ejected,
             position=spacecraft_pos,
             velocity=spacecraft_vel,
             epoch=self.current_epoch + self.time_step_duration,
-            time_step=self.time_step + 1
+            time_step=self.time_step + 1,
+            target_position=None,
+            target_velocity=None
         )
 
-        reward, reward_components = self._reward()
-        return reward, reward_components, detailed_spacecraft_state
+        reward, reward_components = self._get_reward()
 
-    def _reward(self):
+        state = dict(position=self.spacecraft_position,
+                     velocity=self.spacecraft_velocity,
+                     mass=self.spacecraft_mass,
+                     delta_position=self.delta_position,
+                     delta_velocity=self.delta_velocity,
+                     time_step=self.time_step)
+
+        return state, reward, terminated, truncated, info
+
+        # return reward, reward_components, detailed_spacecraft_state
+
+    def _get_reward(self):
         # static destination based on the end epoch
         dest_position = self.target_position
         position_error = (self.spacecraft_position - dest_position) / pk.AU  # In astronomical units
@@ -171,7 +199,7 @@ class LunarEnvironment(gym.Env):
 
         return reward
 
-    def _update_state(self, fuel_mass, position, velocity, epoch, time_step):
+    def _update_state(self, fuel_mass, position, velocity, epoch, time_step, target_position, target_velocity):
         self.fuel_mass = fuel_mass
         self.spacecraft_mass = self.payload_mass + self.fuel_mass
         self.spacecraft_position = position
@@ -179,23 +207,23 @@ class LunarEnvironment(gym.Env):
         self.current_epoch = epoch
         self.time_step = time_step
 
+        if target_velocity is not None and target_position is not None:
+            self.target_velocity = target_velocity
+            self.target_position = target_position
+
+        self.delta_position = self.spacecraft_position - self.target_position
+        self.delta_velocity = self.spacecraft_velocity - self.target_velocity
+
     def render(self):
         return None
 
-    def __mass_ejected(self, thrust, time):
-        G_0 = 9.8
+    def _mass_ejected(self, thrust, time):
+        g_0 = 9.8
         thrust_mag = np.linalg.norm(thrust)
-        dmass_dt = thrust_mag / (G_0 * self.specific_impulse)
-        return dmass_dt * time
+        mass_derivative = thrust_mag / (g_0 * self.specific_impulse)
+        return mass_derivative * time
 
     def accelerate(self, state, time, thrust, spacecraft_mass, source, dest, epoch):
-        """
-        :param state: position and velocity of spacecaft
-        :param time: time_range
-        :param thrust: thrus in x, y, and z
-        :param spacecraft_mass: mass of spacecraft
-        :return:
-        """
         position = state[0:3]
         velocity = state[3:]
 
@@ -209,8 +237,8 @@ class LunarEnvironment(gym.Env):
         r_mag_earth = np.linalg.norm(r_vector_earth)
 
         acceleration = (velocity,
-                        thrust / spacecraft_mass + \
-                        pk.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun + \
-                        pk.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth + \
+                        thrust / spacecraft_mass +
+                        self.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun +
+                        self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth +
                         self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon)
         return np.concatenate(acceleration)
