@@ -33,7 +33,7 @@ class LunarEnvironment(gym.Env):
         self.reward_range = None
 
         # spacecraft variables
-        self.payload_mass = env_config["payload"]
+        self.payload_mass = env_config["payload_mass"]
         self.specific_impulse = env_config["specific_impulse"]
 
         # time variables
@@ -43,7 +43,7 @@ class LunarEnvironment(gym.Env):
 
         # orbit's radius
         self.source_object_orbit = env_config["source_object_orbit"]
-        self.destination_object_orbit = env_config["destination_object_orbit"]
+        self.destination_object_orbit = env_config["dest_object_orbit"]
         self.source_inclination_angle = env_config["source_inclination_angle"]  # phi
         self.source_azimuthal_angle = env_config["source_azimuthal_angle"]  # theta
         self.dest_inclination_angle = env_config["dest_inclination_angle"]  # phi
@@ -51,8 +51,8 @@ class LunarEnvironment(gym.Env):
 
         # planets
         pk.util.load_spice_kernel("../kernels/de441.bsp")
-        self.source_planet = pk.planet.spice(env_config["source"])
-        self.destination_planet = pk.planet.spice(env_config["destination"])
+        self.source_planet = pk.planet.spice(env_config["source_planet"])
+        self.destination_planet = pk.planet.spice(env_config["dest_planet"])
 
         # integration_variables
         self.integration_steps = env_config["integration_steps"]
