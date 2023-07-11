@@ -3,6 +3,9 @@ import gymnasium as gym
 from gymnasium.spaces import Box, Dict
 import pykep as pk
 from scipy.integrate import odeint
+from collections import OrderedDict
+
+
 
 
 class LunarEnvironment(gym.Env):
@@ -18,12 +21,12 @@ class LunarEnvironment(gym.Env):
         self.action_space = Box(-1, 1, (3,), dtype=np.float32)
         self.observation_space = Dict(
             {
-                "position": Box(low=-1000, high=1000, shape=(3,)),
-                "velocity": Box(low=-1000, high=1000, shape=(3,)),
-                "mass": Box(low=0, high=1000, shape=(1,)),
-                "delta_position": Box(low=-1000, high=1000, shape=(3,)),
-                "delta_velocity": Box(low=-1000, high=1000, shape=(3,)),
-                "time_step": Box(low=0, high=100, shape=(1,))
+                "position": Box(low=-pk.AU, high=pk.AU, shape=(3,)),
+                "velocity": Box(low=-80000, high=80000, shape=(3,)),
+                "mass": Box(low=0, high=100000, shape=(1,)),
+                "delta_position": Box(low=-pk.AU, high=pk.AU, shape=(3,)),
+                "delta_velocity": Box(low=-80000, high=80000, shape=(3,)),
+                "time_step": Box(low=0, high=10000, shape=(1,))
             }
         )
         self.reward_range = None
@@ -46,7 +49,8 @@ class LunarEnvironment(gym.Env):
         self.dest_azimuthal_angle = env_config["dest_azimuthal_angle"]  # theta
 
         # planets
-        pk.util.load_spice_kernel("../kernels/de441.bsp")
+        kernel_path = env_config["kernel_path"]
+        pk.util.load_spice_kernel(kernel_path)
         self.source_planet = pk.planet.spice(env_config["source_planet"])
         self.destination_planet = pk.planet.spice(env_config["dest_planet"])
 
@@ -67,7 +71,7 @@ class LunarEnvironment(gym.Env):
         self.delta_velocity = None
         self.time_step = None
 
-    def reset(self, seed=None, options=None):
+    def reset(self, *, seed=None, options=None):
         """resets the environment to the initial state based on the environment config parameters passed"""
         self.fuel_mass = self.env_config["fuel_mass"]
         self.current_epoch = self.env_config["start_epoch"]
@@ -88,22 +92,26 @@ class LunarEnvironment(gym.Env):
                                                                              target_speed,
                                                                              destination_planet_eph)
         self.time_step = 0
-        state = dict(position=spacecraft_position, velocity=spacecraft_velocity,
-                     mass=spacecraft_mass,
-                     delta_position=spacecraft_position - target_position,
-                     delta_velocity=spacecraft_velocity - target_velocity,
-                     time_step=self.time_step)
+        state = dict(
+            delta_position=spacecraft_position - target_position,
+            delta_velocity=spacecraft_velocity - target_velocity,
+            mass=np.array([spacecraft_mass]),
+            position=spacecraft_position,
+            time_step=np.array([self.time_step]),
+            velocity=spacecraft_velocity)
 
-        self.spacecraft_mass = state["mass"]
+        self.spacecraft_mass = state["mass"].item()
         self.spacecraft_position = state["position"]
         self.spacecraft_velocity = state["velocity"]
         self.delta_position = state["delta_position"]
         self.delta_velocity = state["delta_velocity"]
-        self.time_step = state["time_step"]
+        self.time_step = state["time_step"].item()
 
         self.target_position = target_position
         self.target_velocity = target_velocity
-        return state, None
+
+        info = {}
+        return state, info
 
     def _get_orbital_speed(self, radius, mu):
         speed = np.sqrt(2 * mu) / radius
@@ -129,7 +137,7 @@ class LunarEnvironment(gym.Env):
         # terminal state
         terminated = False
         truncated = False
-        info = None
+        info = {}
 
         if np.linalg.norm(self.delta_position) <= position_threshold \
                 and np.linalg.norm(self.delta_velocity) <= velocity_threshold:
@@ -170,14 +178,18 @@ class LunarEnvironment(gym.Env):
             target_velocity=None
         )
 
-        reward, reward_components = self._get_reward()
+        reward = self._get_reward()
 
-        state = dict(position=self.spacecraft_position,
-                     velocity=self.spacecraft_velocity,
-                     mass=self.spacecraft_mass,
-                     delta_position=self.delta_position,
-                     delta_velocity=self.delta_velocity,
-                     time_step=self.time_step)
+        state = dict(
+            delta_position=self.delta_position,
+            delta_velocity=self.delta_velocity,
+            mass=np.array([self.spacecraft_mass]),
+            position=self.spacecraft_position,
+            time_step=np.array([self.time_step]),
+            velocity=self.spacecraft_velocity,
+
+
+                    )
 
         return state, reward, terminated, truncated, info
 
