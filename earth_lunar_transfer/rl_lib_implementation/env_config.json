@@ -17,6 +17,8 @@
   "dest_inclination_angle": 0,
   "dest_azimuthal_angle": 0,
 
-  "integration_steps": 10
+  "integration_steps": 10,
+
+  "kernel_path": "/tmp/pycharm_project_51/kernels/de441.bsp"
 
 }
