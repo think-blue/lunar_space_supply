@@ -1,4 +1,5 @@
 {
+  "action_space": "continuous",
 
   "payload_mass": 1000,
   "fuel_mass": 1000,
@@ -16,6 +17,7 @@
   "dest_object_orbit_radius": 40000e3,
   "dest_inclination_angle": 0,
   "dest_azimuthal_angle": 0,
+  "observer_body": "EARTH-MOON BARYCENTER",
 
   "integration_steps": 10,
 
