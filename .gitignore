@@ -2,3 +2,4 @@
 ./earth_lunar_transfer/rl_lib_implementation/training_data/*
 ./earth_lunar_transfer/mlruns/*
 ./kernels/*
+./data/*

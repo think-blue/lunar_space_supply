@@ -1,4 +1,4 @@
-from gym_compatible_env import LunarEnvironment
+from lunarenvironment import LunarEnvironment
 import json
 import pandas as pd
 

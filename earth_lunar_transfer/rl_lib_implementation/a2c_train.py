@@ -1,7 +1,7 @@
 from ray.rllib.algorithms.a2c import A2CConfig
 from ray.rllib.algorithms.dqn import DQNConfig
 import json
-from gym_compatible_env import LunarEnvironment
+from lunarenvironment import LunarEnvironment
 
 with open("env_config.json", "rb") as config_file:
     env_config = json.load(config_file)

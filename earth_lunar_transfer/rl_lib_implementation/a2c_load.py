@@ -1,5 +1,5 @@
 from ray.rllib.algorithms import Algorithm
-from gym_compatible_env import LunarEnvironment
+from lunarenvironment import LunarEnvironment
 import json
 
 checkpoint = "/home/chinmayd/ray_results/A2C_LunarEnvironment_2023-07-19_00-29-43a06s79he/checkpoint_000501"

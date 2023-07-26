@@ -1,6 +1,6 @@
 import numpy as np
 import ray
-from gym_compatible_env import LunarEnvironment
+from lunarenvironment import LunarEnvironment
 from ray.rllib.utils import check_env
 import json
 
