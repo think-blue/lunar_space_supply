@@ -89,6 +89,7 @@ class LunarEnvironment(gym.Env, object):
         self.velocity_history = []
         self.epoch_history = []
 
+        self.training_data_path = env_config["training_data_path"]
         self.write_flag = 0
         print(id(self))
 
@@ -298,7 +299,7 @@ class LunarEnvironment(gym.Env, object):
         #     file_name = f"{current_time}.csv"
         #     self.write_flag = 1
 
-        with open(f"training_data/{file_name}", "a") as csv_file:
+        with open(f"{self.training_data_path}/{file_name}", "a") as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist())
         print("in render")

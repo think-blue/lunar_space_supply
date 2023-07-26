@@ -6,11 +6,15 @@ with open("env_config.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 file_name = "140346085163664.csv"
-simulation_data = pd.read_csv(f"./training_data/{file_name}", header=None)
+training_data_path = "/tmp/pycharm_project_51/data/training_data/"
+simulation_save_path = "/tmp/pycharm_project_51/data/simulation_figures/"
+
+
+simulation_data = pd.read_csv(f"{training_data_path}/{file_name}", header=None)
 lunar_env = LunarEnvironment(env_config)
 
 save_file = file_name.split(sep=".")[0]
-path = "./simulation_figures/" + save_file + ".html"
+path = f"{simulation_save_path}" + save_file + ".html"
 lunar_env.simulate(simulation_data[0],
                    position_history=simulation_data.loc[:, 1:],
                    source_planet=lunar_env.source_planet,
