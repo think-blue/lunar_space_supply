@@ -15,4 +15,3 @@ dependencies:
   - gymnasium
   - pip:
       - plotly
-      - pykep
