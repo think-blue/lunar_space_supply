@@ -21,7 +21,7 @@
 
   "integration_steps": 10,
 
-  "kernel_path": "/nvme/lunar_space_supply/data/kernels/",
-  "training_data_path": "/tmp/pycharm_project_51/data/training_data/"
+  "kernel_path": "/nvme/lunar_space_supply/data/kernels/de441.bsp",
+  "training_data_path": "/nvme/lunar_space_geetansh/data/training_data"
 
 }
