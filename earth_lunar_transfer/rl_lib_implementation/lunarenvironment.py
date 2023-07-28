@@ -144,7 +144,7 @@ class LunarEnvironment(gym.Env, object):
 
     @staticmethod
     def get_orbital_speed(radius, mu):
-        speed = np.sqrt(2 * mu) / radius
+        speed = np.sqrt(mu/radius)
         return speed
 
     @staticmethod
