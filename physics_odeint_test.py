@@ -5,6 +5,8 @@ from gymnasium.spaces import Box, Dict, MultiDiscrete
 import pykep as pk
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import pandas as pd
 
 MU_MOON = 4.9048695e12
 MU_EARTH = pk.MU_EARTH
@@ -13,7 +15,7 @@ EARTH_MOON_MEAN_DISTANCE = 384467e3
 MOON_DISTANCE_FROM_BARYCENTER = 384467e3 - 4671e3
 MOON_SPEED_WRT_EARTH = 1023.056
 
-with open("env_config.json", "rb") as config_file:
+with open("./earth_lunar_transfer/rl_lib_implementation/env_config.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 action_space = Box(-1, 1, (3,), dtype=np.float32)
@@ -140,20 +142,21 @@ time_step = state["time_step"].item()
 target_position = target_position
 target_velocity = target_velocity
 
-
+n_steps = 2500
 
 time_delta = time_step_duration * 24 * 3600
 num_steps = integration_steps
 
 time_array = np.arange(0, time_delta, num_steps)
 
-action = np.array([0.05, 0.05, 0.05])
+# action = np.array([0.05, 0.05, 0.05])
+action = np.array([0.0, 0.0, 0.0])
 
 print("calculating with time delta")
 pos_list = np.array([spacecraft_position])
 vel_list = np.array([spacecraft_velocity])
 epoch_list = np.array([current_epoch])
-for _ in range(500):
+for _ in range(n_steps):
     detailed_spacecraft_state = odeint(accelerate,
                                         y0=np.concatenate([spacecraft_position, spacecraft_velocity],
                                                             axis=0),
@@ -190,7 +193,7 @@ print("calculating with time array")
 pos_list_2 = np.array([spacecraft_position])
 vel_list_2 = np.array([spacecraft_velocity])
 epoch_list_2 = np.array([current_epoch])
-for _ in range(500):
+for _ in range(n_steps):
     detailed_spacecraft_state = odeint(accelerate,
                                         y0=np.concatenate([spacecraft_position, spacecraft_velocity],
                                                             axis=0),
@@ -227,7 +230,7 @@ print("Old orbit vel func calculating with time delta")
 pos_list_3 = np.array([spacecraft_position])
 vel_list_3 = np.array([spacecraft_velocity])
 epoch_list_3 = np.array([current_epoch])
-for _ in range(500):
+for _ in range(n_steps):
     detailed_spacecraft_state = odeint(accelerate,
                                         y0=np.concatenate([spacecraft_position, spacecraft_velocity],
                                                             axis=0),
@@ -264,7 +267,7 @@ print("Old orbit vel func calculating with time array")
 pos_list_4 = np.array([spacecraft_position])
 vel_list_4 = np.array([spacecraft_velocity])
 epoch_list_4 = np.array([current_epoch])
-for _ in range(500):
+for _ in range(n_steps):
     detailed_spacecraft_state = odeint(accelerate,
                                         y0=np.concatenate([spacecraft_position, spacecraft_velocity],
                                                             axis=0),
@@ -285,31 +288,108 @@ for _ in range(500):
     current_epoch += time_step_duration
     epoch_list_4 = np.append(epoch_list_4, current_epoch)
 
-plt.subplot(131)
-plt.plot(epoch_list, pos_list[:,0], label="time delta")
-plt.plot(epoch_list_2, pos_list_2[:,0], label="time array")
-plt.plot(epoch_list, pos_list_3[:,0], label="Old func time delta")
-plt.plot(epoch_list_2, pos_list_4[:,0], label="Old func time array")
-plt.title("x-axis")
-plt.xlabel("Epoch")
-plt.ylabel("position")
-plt.legend()
-plt.subplot(132)
-plt.plot(epoch_list, pos_list[:,1], label="time delta")
-plt.plot(epoch_list_2, pos_list_2[:,1], label="time array")
-plt.plot(epoch_list, pos_list_3[:,1], label="Old func time delta")
-plt.plot(epoch_list_2, pos_list_4[:,1], label="Old func time array")
-plt.title("y-axis")
-plt.xlabel("Epoch")
-plt.ylabel("position")
-plt.legend()
-plt.subplot(133)
-plt.plot(epoch_list, pos_list[:,2], label="time delta")
-plt.plot(epoch_list_2, pos_list_2[:,2], label="time array")
-plt.plot(epoch_list, pos_list_3[:,2], label="Old func time delta")
-plt.plot(epoch_list_2, pos_list_4[:,2], label="Old func time array")
-plt.title("z-axis")
-plt.xlabel("Epoch")
-plt.ylabel("position")
-plt.legend()
-plt.show()
+def plot_positions():
+    plt.subplot(131)
+    plt.plot(epoch_list, pos_list[:,0], label="time delta")
+    plt.plot(epoch_list_2, pos_list_2[:,0], label="time array")
+    # plt.plot(epoch_list, pos_list_3[:,0], label="Old func time delta")
+    # plt.plot(epoch_list_2, pos_list_4[:,0], label="Old func time array")
+    plt.title("x-axis")
+    plt.xlabel("Epoch")
+    plt.ylabel("position")
+    plt.legend()
+    plt.subplot(132)
+    plt.plot(epoch_list, pos_list[:,1], label="time delta")
+    plt.plot(epoch_list_2, pos_list_2[:,1], label="time array")
+    # plt.plot(epoch_list, pos_list_3[:,1], label="Old func time delta")
+    # plt.plot(epoch_list_2, pos_list_4[:,1], label="Old func time array")
+    plt.title("y-axis")
+    plt.xlabel("Epoch")
+    plt.ylabel("position")
+    plt.legend()
+    plt.subplot(133)
+    plt.plot(epoch_list, pos_list[:,2], label="time delta")
+    plt.plot(epoch_list_2, pos_list_2[:,2], label="time array")
+    # plt.plot(epoch_list, pos_list_3[:,2], label="Old func time delta")
+    # plt.plot(epoch_list_2, pos_list_4[:,2], label="Old func time array")
+    plt.title("z-axis")
+    plt.xlabel("Epoch")
+    plt.ylabel("position")
+    plt.legend()
+    plt.show()
+
+def simulate(epoch_history, position_history, source_planet, destination_planet, path, display=False):
+    source_data = []
+    destination_data = []
+    for epoch in epoch_history:
+        source_data_epoch = source_planet.eph(epoch)[0]
+        destination_data_epoch = destination_planet.eph(epoch)[0]
+        source_data.append(source_data_epoch)
+        destination_data.append(destination_data_epoch)
+    source_data, destination_data, position_data = np.array(source_data), np.array(destination_data), np.array(
+        position_history)
+
+    figure_len = 9e8
+    figure = go.Figure(
+        data=[go.Scatter3d(x=[source_data[:, 0]],
+                            y=[source_data[:, 1]],
+                            z=[source_data[:, 2]],
+                            name="moon"),
+                go.Scatter3d(x=[destination_data[:, 0]],
+                            y=[destination_data[:, 1]],
+                            z=[destination_data[:, 2]],
+                            name="earth"),
+                go.Scatter3d(x=[position_data[:, 0]],
+                            y=[position_data[:, 1]],
+                            z=[position_data[:, 2]],
+                            name="spacecraft", marker_size=2)
+                ],
+        layout=go.Layout(
+            scene=dict(xaxis_range=[-figure_len, figure_len],
+                        yaxis_range=[-figure_len, figure_len],
+                        zaxis_range=[-figure_len, figure_len],
+                        xaxis=dict(
+                            backgroundcolor='rgb(0, 0, 0)'),
+                        yaxis=dict(
+                            backgroundcolor='rgb(0, 0, 0)'),
+                        zaxis=dict(
+                            backgroundcolor='rgb(0, 0, 0)')
+                        ),
+            updatemenus=[dict(type="buttons",
+                                buttons=[dict(label="Play",
+                                            method="animate",
+                                            args=[None])])
+                            ]
+        ),
+        frames=[go.Frame
+                (data=[go.Scatter3d(x=[source_data[i, 0]],
+                                    y=[source_data[i, 1]],
+                                    z=[source_data[i, 2]],
+                                    name="moon"),
+                        go.Scatter3d(x=[destination_data[i, 0]],
+                                    y=[destination_data[i, 1]],
+                                    z=[destination_data[i, 2]],
+                                    name="earth"),
+                        go.Scatter3d(x=[position_data[i, 0]],
+                                    y=[position_data[i, 1]],
+                                    z=[position_data[i, 2]],
+                                    name="spacecraft", marker_size=2)]
+                    ) for i in range(len(source_data))]
+    )
+
+    figure.write_html(path)
+
+    if display:
+        figure.show()
+
+
+def plot_3d_line_plot(position_list):
+    import plotly.express as px
+    
+    pos_df = pd.DataFrame(position_list, columns=["X", "Y", "Z"])
+    fig = px.line_3d(pos_df, x="X", y="Y", z="Z")
+    fig.show()
+
+plot_positions()
+# plot_3d_line_plot(pos_list_4)
+# simulate(epoch_list_4, pos_list_4, source_planet, destination_planet, "./data/plot.html", True)
