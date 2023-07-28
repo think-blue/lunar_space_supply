@@ -13,5 +13,7 @@ dependencies:
   - scipy
   - pytorch
   - gymnasium
+  - matplotlib
   - pip:
       - plotly
+      - mlflow
