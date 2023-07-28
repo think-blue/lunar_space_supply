@@ -302,7 +302,7 @@ class LunarEnvironment(gym.Env, object):
         with open(f"{self.training_data_path}/{file_name}", "a") as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist())
-        print("in render")
+        # print("in render")
         return None
 
     def _mass_ejected(self, thrust, time):
