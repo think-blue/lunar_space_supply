@@ -1,16 +1,11 @@
-from ray.rllib.algorithms.a2c import A2CConfig
-from ray.rllib.algorithms.dqn import DQNConfig
-import json
+from ray.rllib.algorithms import Algorithm
 from lunarenvironment import LunarEnvironment
-import mlflow
+import json
 from datetime import datetime
+from ray.rllib.algorithms.a2c import A2CConfig
 
 
-
-with open("env_config.json", "rb") as config_file:
-    env_config = json.load(config_file)
-
-
+checkpoint = "/home/chinmayd/ray_results/A2C_LunarEnvironment_2023-07-28_13-23-0146g1wieu/checkpoint_000401"
 a2c_config = (
     A2CConfig()
     .environment(env=LunarEnvironment, env_config=env_config)
@@ -21,8 +16,8 @@ a2c_config = (
 )
 
 a2c_algo = a2c_config.build()
+a2c_algo.restore(checkpoint_path=checkpoint)
 
-print("training")
 for i in range(3201):
     train_results = a2c_algo.train()
     if i % 50 == 0:
@@ -32,8 +27,3 @@ for i in range(3201):
     if i % 400 == 0:
         path = a2c_algo.save()
         print(f"saved to {path}")
-
-evaluation_results = a2c_algo.evaluate()
-pass
-# visualise using
-# tensorboard --logdir=~/ray_results
