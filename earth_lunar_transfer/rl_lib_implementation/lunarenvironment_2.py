@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 from time import time
 
 
-class LunarEnvironment(gym.Env, object):
+class LunarEnvironment2(gym.Env, object):
     MU_MOON = 4.9048695e12
     MU_EARTH = pk.MU_EARTH
     MU_SUN = 0  # pk.MU_SUN
@@ -36,9 +36,9 @@ class LunarEnvironment(gym.Env, object):
                 "velocity": Box(low=-50, high=50, shape=(3,)),
                 "mass": Box(low=0, high=1, shape=(1,)),
                 "direction_vector_": Box(low=-10, high=10, shape=(3,)),
-                "direction_magnitude_": Box(low=0, high=500, shape=(1,)),
+                "direction_magnitude_": Box(low=-10, high=10, shape=(3,)),
                 "velocity_vector_": Box(low=-50, high=50, shape=(3,)),
-                "velocity_magnitude_": Box(low=0, high=500, shape=(1,)),
+                "velocity_magnitude_": Box(low=-10, high=10, shape=(3,)),
                 # todo: debug this time step getting out of bounds
                 "time_step": Box(low=0, high=1.2, shape=(1,))
             }
@@ -91,9 +91,17 @@ class LunarEnvironment(gym.Env, object):
         self.delta_velocity = None
         self.time_step = None
 
-        self.positional_reward = None
+        # self.positional_reward = None
+        self.positional_reward_x = None
+        self.positional_reward_y = None
+        self.positional_reward_z = None
+
         self.mass_reward = None
-        self.velocity_reward = None
+
+        # self.velocity_reward = None
+        self.velocity_reward_x = None
+        self.velocity_reward_y = None
+        self.velocity_reward_z = None
 
         self.position_history = []
         self.velocity_history = []
@@ -280,40 +288,95 @@ class LunarEnvironment(gym.Env, object):
         """
         Everything is in SI units
         """
-        self.positional_reward = 0
+        # self.positional_reward = 0
+        self.positional_reward_x = 0
+        self.positional_reward_y = 0
+        self.positional_reward_z = 0
+
         self.mass_reward = 0
-        self.velocity_reward = 0
+        # self.velocity_reward = 0
+        self.velocity_reward_x = 0
+        self.velocity_reward_y = 0
+        self.velocity_reward_z = 0
 
         # static destination based on the end epoch
         previous_loc_error = self.target_position - self.previous_spacecraft_position
-        previous_positional_error_magnitude = np.linalg.norm(previous_loc_error) / (
-                self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius)
+        x_previous = previous_loc_error[0]
+        y_previous = previous_loc_error[1]
+        z_previous = previous_loc_error[2]
+
+        # previous_positional_error_magnitude = np.linalg.norm(previous_loc_error) / (
+        #         self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius)
 
         current_loc_error = self.target_position - self.spacecraft_position
-        current_positional_error_magnitude = np.linalg.norm(current_loc_error) / (
-                self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius)
+        current_x = current_loc_error[0]
+        current_y = current_loc_error[1]
+        current_z = current_loc_error[2]
 
-        if previous_positional_error_magnitude > current_positional_error_magnitude:
-            self.positional_reward = (1 / current_positional_error_magnitude) * 10
+        # current_positional_error_magnitude = np.linalg.norm(current_loc_error) / (
+        #         self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius)
+
+        # if previous_positional_error_magnitude > current_positional_error_magnitude:
+        #     self.positional_reward = (1 / current_positional_error_magnitude) * 10
+        # else:
+        #     self.positional_reward = (-1 / current_positional_error_magnitude) * 10
+
+        if x_previous > current_x:
+            self.positional_reward_x = (1/current_x)
         else:
-            self.positional_reward = (-1 / current_positional_error_magnitude) * 10
+            self.positional_reward_x = -(1 / current_x)
+
+        if y_previous > current_y:
+            self.positional_reward_y = (1 / current_y)
+        else:
+            self.positional_reward_y = -(1 / current_y)
+
+        if z_previous > current_z:
+            self.positional_reward_z = (1 / current_z)
+        else:
+            self.positional_reward_z = -(1 / current_z)
 
         self.mass_reward = -(1 - (self.fuel_mass / self.env_config["fuel_mass"])) * 10
 
         previous_vel_error = self.target_velocity - self.previous_spacecraft_velocity
-        previous_velocity_mag = - np.linalg.norm(
-            previous_vel_error) / self.MOON_SPEED_WRT_EARTH  # astronomical units
+        x_previous = previous_vel_error[0]
+        y_previous = previous_vel_error[1]
+        z_previous = previous_vel_error[2]
+
+        # previous_velocity_mag = - np.linalg.norm(
+        #     previous_vel_error) / self.MOON_SPEED_WRT_EARTH  # astronomical units
 
         current_vel_error = self.target_velocity - self.spacecraft_velocity
-        current_velocity_mag = - np.linalg.norm(
-            current_vel_error) / self.MOON_SPEED_WRT_EARTH  # astronomical units
+        current_x = current_vel_error[0]
+        current_y = current_vel_error[1]
+        current_z = current_vel_error[2]
 
-        if previous_velocity_mag > current_velocity_mag:
-            self.velocity_reward = (1 / current_velocity_mag) * 10
+        if x_previous > current_x:
+            self.velocity_reward_x = (1 / current_x)
         else:
-            self.velocity_reward = (-1 / current_velocity_mag) * 10
+            self.velocity_reward_x = -(1 / current_x)
 
-        reward = (self.positional_reward + self.mass_reward + self.velocity_reward) * 10
+        if y_previous > current_y:
+            self.velocity_reward_y = (1 / current_y)
+        else:
+            self.velocity_reward_y = -(1 / current_y)
+
+        if z_previous > current_z:
+            self.velocity_reward_z = (1 / current_z)
+        else:
+            self.velocity_reward_z = -(1 / current_z)
+
+
+        # current_velocity_mag = - np.linalg.norm(
+        #     current_vel_error) / self.MOON_SPEED_WRT_EARTH  # astronomical units
+
+        # if previous_velocity_mag > current_velocity_mag:
+        #     self.velocity_reward = (1 / current_velocity_mag) * 10
+        # else:
+        #     self.velocity_reward = (-1 / current_velocity_mag) * 10
+
+        reward = (self.positional_reward_x + self.positional_reward_y + self.positional_reward_z
+                  + self.mass_reward + self.velocity_reward_x + self.velocity_reward_y + self.velocity_reward_z)*10
 
         # print(positional_reward, mass_reward, velocity_reward)
         return reward
@@ -361,17 +424,17 @@ class LunarEnvironment(gym.Env, object):
 
         with open(f"{self.training_data_path}/{file_name}", "a") as csv_file:
             csv_writer = csv.writer(csv_file)
-            csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist() + [self.positional_reward,
-                                                                                            self.mass_reward,
-                                                                                            self.velocity_reward])
-
-            # csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist() + [self.positional_reward_x,
-            #                                                                                 self.positional_reward_y,
-            #                                                                                 self.positional_reward_z,
+            # csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist() + [self.positional_reward,
             #                                                                                 self.mass_reward,
-            #                                                                                 self.velocity_reward_x,
-            #                                                                                 self.velocity_reward_y,
-            #                                                                                 self.velocity_reward_z])
+            #                                                                                 self.velocity_reward])
+
+            csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist() + [self.positional_reward_x,
+                                                                                            self.positional_reward_y,
+                                                                                            self.positional_reward_z,
+                                                                                            self.mass_reward,
+                                                                                            self.velocity_reward_x,
+                                                                                            self.velocity_reward_y,
+                                                                                            self.velocity_reward_z])
 
         print("in render")
         return None
@@ -506,7 +569,7 @@ class LunarEnvironment(gym.Env, object):
         else:
             Vz = 0
 
-        return np.array([Vx, Vy, Vz]), np.array([round((magnitude_delta / 1000000), 1)])
-        # return np.array([Vx, Vy, Vz]), np.array([delta_x/magnitude_delta,
-        #                                          delta_y/magnitude_delta,
-        #                                          delta_z/magnitude_delta])
+        # return np.array([Vx, Vy, Vz]), np.array([round((magnitude_delta / 1000000), 1)])
+        return np.array([Vx, Vy, Vz]), np.array([delta_x/magnitude_delta,
+                                                 delta_y/magnitude_delta,
+                                                 delta_z/magnitude_delta])

@@ -2,6 +2,7 @@ from ray.rllib.algorithms.a2c import A2CConfig
 from ray.rllib.algorithms.dqn import DQNConfig
 import json
 
+from lunarenvironment_2 import LunarEnvironment2
 from lunarenvironment import LunarEnvironment
 from datetime import datetime
 
@@ -11,7 +12,7 @@ with open("env_config.json", "rb") as config_file:
 
 a2c_config = (
     A2CConfig()
-    .environment(env=LunarEnvironment, env_config=env_config)
+    .environment(env=LunarEnvironment2, env_config=env_config)
     .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
     .resources(num_gpus=1)
     .training(train_batch_size=500)
