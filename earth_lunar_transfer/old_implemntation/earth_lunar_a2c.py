@@ -7,8 +7,8 @@ import torch.optim as optim
 import torch
 
 sys.path.append("//")
-from earth_lunar_transfer.earth_lunar_old_implemntation.common_module import run_episode, update_params
-from earth_lunar_transfer.earth_lunar_old_implemntation.rl_agent import ActorCritic
+from earth_lunar_transfer.old_implemntation.common_module import run_episode, update_params
+from earth_lunar_transfer.old_implemntation.rl_agent import ActorCritic
 
 
 if __name__ == "__main__":

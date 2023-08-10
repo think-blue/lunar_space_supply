@@ -5,9 +5,9 @@ import pykep as pk
 import torch
 
 from Spacecraft import Spacecraft
-from earth_lunar_transfer.earth_lunar_old_implemntation.common_module import run_spacecraft
-from earth_lunar_transfer.earth_lunar_old_implemntation.rl_agent import ActorCritic
-from earth_lunar_transfer.earth_lunar_old_implemntation.visualise import simulate_spacecraft
+from earth_lunar_transfer.old_implemntation.common_module import run_spacecraft
+from earth_lunar_transfer.old_implemntation.rl_agent import ActorCritic
+from earth_lunar_transfer.old_implemntation.visualise import simulate_spacecraft
 import json
 
 if __name__ == "__main__":

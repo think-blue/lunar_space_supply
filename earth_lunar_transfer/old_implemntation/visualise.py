@@ -2,7 +2,7 @@ import pykep as pk
 from matplotlib import pyplot as plt
 from plotly import io as pio, graph_objects as go
 
-from earth_lunar_transfer.earth_lunar_old_implemntation.common_module import create_planets, create_position_data
+from earth_lunar_transfer.old_implemntation.common_module import create_planets, create_position_data
 
 
 def simulate_spacecraft(states, spacecraft):

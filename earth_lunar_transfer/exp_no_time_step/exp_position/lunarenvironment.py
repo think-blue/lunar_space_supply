@@ -8,9 +8,15 @@ import pykep as pk
 from scipy.integrate import odeint
 import plotly.graph_objects as go
 from time import time
+import mlflow
+import plotly.express as px
 
 
 class LunarEnvironment(gym.Env, object):
+    """
+    rewards just based on the position,
+    and velocity
+    """
     MU_MOON = 4.9048695e12
     MU_EARTH = pk.MU_EARTH
     MU_SUN = 0  # pk.MU_SUN
@@ -22,12 +28,20 @@ class LunarEnvironment(gym.Env, object):
         """the environment where the
         target position and target velocity is fixed"""
 
+        self.start_velocity = None
+        self.start_position = None
+        self.forces = None
+        self.state = None
+        self.normalised_state = None
+        self.reward = None
+        self.reward_components = None
         self.render_mode = "ansi"
         self.env_config = env_config
+
         if self.env_config["action_space"] == "discrete":
             self.action_space = MultiDiscrete([10, 10, 10])
         else:
-            self.action_space = Box(-1, 1, (3,), dtype=np.float32)
+            self.action_space = Box(-env_config["max_thrust"], env_config["max_thrust"], (3,), dtype=np.float32)
 
         self.observation_space = Dict(
             {
@@ -85,12 +99,38 @@ class LunarEnvironment(gym.Env, object):
         self.delta_velocity = None
         self.time_step = None
 
+        self.fuel_mass_history = []
         self.position_history = []
         self.velocity_history = []
+        self.delta_position_history = []
+        self.delta_velocity_history = []
+        self.time_step_history = []
         self.epoch_history = []
+        self.reward_history = []
+        self.reward_components_history = []
 
-        self.training_data_path = env_config["training_data_path"]
-        self.write_flag = 0
+        self.training_data_path = env_config["data_path"]
+        self.object_id = f"{id(self)}"
+        self.experiment_name = env_config["exp_name"]
+        self.episode_count = 0
+
+        if not os.path.exists(os.path.join(self.training_data_path, self.experiment_name)):
+            os.makedirs(os.path.join(self.training_data_path, self.experiment_name))
+
+        self.save_training_data_path = os.path.join(self.training_data_path, self.experiment_name,
+                                                    self.object_id + ".csv")
+
+        if env_config["mlflow_configured"]:
+            with mlflow.start_run(run_id=env_config["mlflow_run_id"]):
+                mlflow.log_param(f"train_csv_data_path_{id(self)}", self.save_training_data_path)
+                pass
+        with open(f"{self.save_training_data_path}", "a") as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(["mass", "pos_x", "pos_y", "pos_z", "vel_x", "vel_y", "vel_z",
+                                 "delta_pos_x", "delta_pos_y", "delta_pos_z", "delta_vel_x", "delta_vel_y",
+                                 "delta_vel_z",
+                                 "time_step", "epoch", "episode", "reward"])
+
         print(id(self))
 
     # def __new__(cls, env_config, *args, **kwargs):
@@ -119,7 +159,7 @@ class LunarEnvironment(gym.Env, object):
                                                                             target_speed,
                                                                             destination_planet_eph)
         self.time_step = 0
-        state = dict(
+        self.state = dict(
             delta_position=spacecraft_position - target_position,
             delta_velocity=spacecraft_velocity - target_velocity,
             mass=np.array([spacecraft_mass]),
@@ -127,48 +167,80 @@ class LunarEnvironment(gym.Env, object):
             time_step=np.array([self.time_step]),
             velocity=spacecraft_velocity)
 
-        self.spacecraft_mass = state["mass"].item()
-        self.spacecraft_position = state["position"]
-        self.spacecraft_velocity = state["velocity"]
-        self.delta_position = state["delta_position"]
-        self.delta_velocity = state["delta_velocity"]
-        self.time_step = state["time_step"].item()
+        self.spacecraft_mass = self.state["mass"].item()
+        self.spacecraft_position = self.state["position"]
+        self.spacecraft_velocity = self.state["velocity"]
+        self.delta_position = self.state["delta_position"]
+        self.delta_velocity = self.state["delta_velocity"]
+        self.time_step = self.state["time_step"].item()
+        self.reward = 0
+        self.reward_components = [0, 0, 0]
 
+        self.start_position = self.spacecraft_position
+        self.start_velocity = self.spacecraft_velocity
         self.target_position = target_position
         self.target_velocity = target_velocity
 
+        if self.env_config["mlflow_configured"]:
+            with mlflow.start_run(run_id=self.env_config["mlflow_run_id"]):
+                mlflow.log_param(f"start_speed_{self.object_id}", np.linalg.norm(spacecraft_velocity))
+                mlflow.log_param(f"target_speed_{self.object_id}", np.linalg.norm(target_velocity))
+                mlflow.log_param(f"target_velocity_x_{self.object_id}", target_velocity[0])
+                mlflow.log_param(f"target_velocity_y_{self.object_id}", target_velocity[1])
+                mlflow.log_param(f"target_velocity_z_{self.object_id}", target_velocity[2])
+                mlflow.log_param(f"target_position_x_{self.object_id}", target_position[0])
+                mlflow.log_param(f"target_position_y_{self.object_id}", target_position[1])
+                mlflow.log_param(f"target_position_z_{self.object_id}", target_position[2])
+                pass
+
+        # write episode history and reset history
+        self._write_episode_history()
+        self.fuel_mass_history = []
+        self.position_history = []
+        self.velocity_history = []
+        self.delta_position_history = []
+        self.delta_velocity_history = []
+        self.time_step_history = []
+        self.epoch_history = []
+        self.reward_history = []
+        self.reward_components_history = []
+
+        self.episode_count += 1
+
         info = {}
 
-        state = self._normalise_state(state)
-        return state, info
+        self.normalised_state = self._normalise_state(self.state)
+        return self.normalised_state, info
 
     @staticmethod
     def get_orbital_speed(radius, mu):
-        speed = np.sqrt(mu/radius)
+        speed = np.sqrt(mu / radius)
         return speed
 
     @staticmethod
-    def get_eph_from_orbital_angles(theta, phi, radius, speed, moon_eph):
+    def get_eph_from_orbital_angles(theta, phi, radius, speed, planet_eph):
         relative_position = radius * np.array([np.sin(theta) * np.cos(phi),
                                                np.sin(theta) * np.sin(phi),
                                                np.cos(theta)])
-        position = np.array(moon_eph[0]) + relative_position
+        position = np.array(planet_eph[0]) + relative_position
 
         relative_velocity = speed * np.array([np.sin(theta + np.pi / 2) * np.cos(phi),
                                               np.sin(theta + np.pi / 2) * np.sin(phi),
                                               np.cos(theta + np.pi / 2)])
-        velocity = relative_velocity + np.array(moon_eph[1])
+        velocity = relative_velocity + np.array(planet_eph[1])
         return position, velocity
 
     def step(self, action):
+
+        self._store_episode_history()
 
         # todo: test this function out
         if self.env_config["action_space"] == "discrete":
             action = self.transform_action(action)
 
         # todo: add threshold for position and velocity
-        position_threshold = 0
-        velocity_threshold = 0
+        position_threshold = 10000
+        velocity_threshold = 40
 
         # terminal state
         terminated = False
@@ -180,22 +252,27 @@ class LunarEnvironment(gym.Env, object):
             terminated = True
 
         # truncated state time limit, out of fuel todo: add out of bounds values
-        if self.time_step > self.max_time_steps or self.fuel_mass < 0:
+        if self.fuel_mass < 0:
             truncated = True
 
         time_delta = self.time_step_duration * 24 * 3600  # in seconds
         num_steps = self.integration_steps
 
-        # todo: verify time array
         time_array = np.arange(0, time_delta, num_steps)
         # implement new state of mass
         detailed_spacecraft_state = odeint(self.accelerate,
                                            y0=np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
                                                              axis=0),
+                                           #t = time_array,
                                            t=[0, time_delta],
                                            # todo: verify this function and it's working
                                            args=(action, (self.payload_mass + self.fuel_mass),
                                                  self.current_epoch))
+        ##########################
+        self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
+                                                             axis=0), action, self.payload_mass + self.fuel_mass, self.current_epoch)
+        ######################################
+
         # todo: check what odeint.T does
         spacecraft_pos = np.array(detailed_spacecraft_state[-1, :3])
         spacecraft_vel = np.array(detailed_spacecraft_state[-1, 3:])
@@ -213,9 +290,9 @@ class LunarEnvironment(gym.Env, object):
             target_velocity=None
         )
 
-        reward = self._get_reward()
+        self.reward, self.reward_components = self._get_reward()
 
-        state = dict(
+        self.state = dict(
             delta_position=self.delta_position,
             delta_velocity=self.delta_velocity,
             mass=np.array([self.spacecraft_mass]),
@@ -225,19 +302,45 @@ class LunarEnvironment(gym.Env, object):
 
         )
 
-        state = self._normalise_state(state)
+        self.normalised_state = self._normalise_state(self.state)
 
-        # self._store_history()
-        self.render()
-        return state, reward, terminated, truncated, info
+        self._store_episode_history()
+        return self.normalised_state, self.reward, terminated, truncated, info
 
-        # return reward, reward_components, detailed_spacecraft_state
-
-    def _store_history(self):
+    def _store_episode_history(self):
         # todo: make it a csv writer
+
         self.position_history.append(self.spacecraft_position.tolist())
         self.velocity_history.append(self.spacecraft_velocity.tolist())
         self.epoch_history.append(self.current_epoch)
+        self.delta_position_history.append(self.delta_position)
+        self.delta_velocity_history.append(self.delta_velocity)
+        self.fuel_mass_history.append(self.fuel_mass)
+        self.time_step_history.append(self.time_step)
+        self.reward_history.append(self.reward)
+        self.reward_components_history.append(self.reward_components)
+
+    def _write_episode_history(self):
+        with open(f"{self.save_training_data_path}", "a") as csv_file:
+            csv_writer = csv.writer(csv_file)
+            episode_array = np.ones(shape=(len(self.fuel_mass_history), 1)) * self.episode_count
+
+            if not self.position_history == []:
+                data = np.hstack(
+                    [
+                        np.array(self.fuel_mass_history).reshape(-1, 1),
+                        self.position_history,
+                        self.velocity_history,
+                        self.delta_position_history,
+                        self.delta_velocity_history,
+                        np.array(self.time_step_history).reshape(-1, 1),
+                        np.array(self.epoch_history).reshape(-1, 1),
+                        episode_array,
+                        np.array(self.reward_history).reshape(-1, 1),
+                        self.reward_components_history
+                    ]
+                )
+                csv_writer.writerows(data.tolist())
 
     def _get_reward(self):
         """
@@ -254,9 +357,15 @@ class LunarEnvironment(gym.Env, object):
 
         velocity_reward = - np.linalg.norm(
             self.spacecraft_velocity - self.target_velocity) / self.MOON_SPEED_WRT_EARTH  # astronomical units
-        reward = 10 + positional_reward + mass_reward + velocity_reward
+
+        time_penalty = 0
+        if self.time_step > self.max_time_steps:
+            time_penalty = -30
+
+        reward = 10 + positional_reward + mass_reward + velocity_reward + time_penalty
         # print(positional_reward, mass_reward, velocity_reward)
-        return reward
+        reward_components = [positional_reward, mass_reward, velocity_reward]
+        return reward, reward_components
 
     def _update_state(self, fuel_mass, position, velocity, epoch, time_step, target_position, target_velocity):
         self.fuel_mass = fuel_mass
@@ -286,23 +395,6 @@ class LunarEnvironment(gym.Env, object):
         return state
 
     def render(self):
-        # if not self.write_flag:
-        #     with open("csv_file.txt", "w") as csv_file:
-        #         csv_writer = csv.writer(csv_file)
-        #         csv_writer.writerow(["epoch", "x", "y", "z"])
-        #         self.write_flag = 1
-
-        # create file
-        file_name = f"{id(self)}.csv"
-        # if self.write_flag == 0:
-        #     current_time = time()
-        #     file_name = f"{current_time}.csv"
-        #     self.write_flag = 1
-
-        with open(f"{self.training_data_path}/{file_name}", "a") as csv_file:
-            csv_writer = csv.writer(csv_file)
-            csv_writer.writerow([self.current_epoch] + self.spacecraft_position.tolist())
-        # print("in render")
         return None
 
     def _mass_ejected(self, thrust, time):
@@ -311,9 +403,9 @@ class LunarEnvironment(gym.Env, object):
         mass_derivative = thrust_mag / (g_0 * self.specific_impulse)
         return mass_derivative * time
 
-    def accelerate(self, state, time, thrust, spacecraft_mass, epoch):
-        position = state[0:3]
-        velocity = state[3:]
+    def accelerate(self, state_0, time, thrust, spacecraft_mass, epoch):
+        position = state_0[0:3]
+        velocity = state_0[3:]
 
         r_vector_sun = np.array(self.sun.eph(epoch))[0] - position
         r_mag_sun = np.linalg.norm(r_vector_sun)
@@ -324,12 +416,32 @@ class LunarEnvironment(gym.Env, object):
         r_vector_earth = np.array(self.destination_planet.eph(epoch))[0] - position
         r_mag_earth = np.linalg.norm(r_vector_earth)
 
-        acceleration = (velocity,
-                        thrust / spacecraft_mass +
-                        self.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun +
-                        self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth +
-                        self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon)
-        return np.concatenate(acceleration)
+        state_0 = (velocity,
+                   thrust / spacecraft_mass +
+                   self.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun +
+                   self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth +
+                   self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon)
+        return np.concatenate(state_0)
+
+    def accelerate_components(self, state_0, thrust, spacecraft_mass, epoch):
+        position = state_0[0:3]
+        velocity = state_0[3:]
+
+        r_vector_sun = np.array(self.sun.eph(epoch))[0] - position
+        r_mag_sun = np.linalg.norm(r_vector_sun)
+
+        r_vector_moon = np.array(self.source_planet.eph(epoch))[0] - position
+        r_mag_moon = np.linalg.norm(r_vector_moon)
+
+        r_vector_earth = np.array(self.destination_planet.eph(epoch))[0] - position
+        r_mag_earth = np.linalg.norm(r_vector_earth)
+        return (
+            thrust / spacecraft_mass,
+            self.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun,
+            self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth,
+            self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon
+        )
+
 
     @staticmethod
     def transform_action(action):
@@ -341,15 +453,41 @@ class LunarEnvironment(gym.Env, object):
                 action - input_start)
         return transformed_action
 
+
     @staticmethod
-    def simulate(epoch_history, position_history, source_planet, destination_planet, path, display=False):
-        source_data = []
-        destination_data = []
-        for epoch in epoch_history:
-            source_data_epoch = source_planet.eph(epoch)[0]
-            destination_data_epoch = destination_planet.eph(epoch)[0]
-            source_data.append(source_data_epoch)
-            destination_data.append(destination_data_epoch)
+    def simulate(epoch_history, position_history, source_planet, destination_planet, path, source_point, destination_point, display=False):
+        source_data, destination_data = LunarEnvironment._get_planetary_data(destination_planet, epoch_history,
+                                                                             source_planet)
+        source_data, destination_data, position_data = np.array(source_data), np.array(destination_data), np.array(
+            position_history)
+        source_point = go.Scatter3d(x=[source_point[0], destination_point[0]],
+                                    y=[source_point[1], destination_point[1]],
+                                    z=[source_point[2], destination_point[2]],
+                                    mode="markers")
+        spacecraft_plot = go.Scatter3d(x=position_data[:, 0],
+                                       y=position_data[:, 1],
+                                       z=position_data[:, 2],
+                                       mode="lines",
+                                       name="Spacecraft")
+        source_plot = go.Scatter3d(x=source_data[:, 0],
+                                   y=source_data[:, 1],
+                                   z=source_data[:, 2],
+                                   mode="lines",
+                                   name="moon")
+        dest_plot = go.Scatter3d(x=destination_data[:, 0],
+                                 y=destination_data[:, 1],
+                                 z=destination_data[:, 2],
+                                 mode="lines",
+                                 name="earth")
+
+        figure = go.Figure(data=[source_point, spacecraft_plot, source_plot, dest_plot])
+        figure.write_html(f"{path}/temp.html")
+
+
+    @staticmethod
+    def animate(epoch_history, position_history, source_planet, destination_planet, path, display=False):
+        source_data, destination_data = LunarEnvironment._get_planetary_data(destination_planet, epoch_history,
+                                                                             source_planet)
         source_data, destination_data, position_data = np.array(source_data), np.array(destination_data), np.array(
             position_history)
 
@@ -363,21 +501,22 @@ class LunarEnvironment(gym.Env, object):
                                y=[destination_data[0, 1]],
                                z=[destination_data[0, 2]],
                                name="earth"),
-                  go.Scatter3d(x=[position_data[0, 0]],
-                               y=[position_data[0, 1]],
-                               z=[position_data[0, 2]],
-                               name="spacecraft")
+                  go.Scatter3d(x=position_data[:, 0],
+                               y=position_data[:, 1],
+                               z=position_data[:, 2],
+                               name="spacecraft",
+                               mode="lines")
                   ],
             layout=go.Layout(
                 scene=dict(xaxis_range=[-figure_len, figure_len],
                            yaxis_range=[-figure_len, figure_len],
                            zaxis_range=[-figure_len, figure_len],
                            xaxis=dict(
-                               backgroundcolor='rgb(255, 255, 255)'),
+                               backgroundcolor='rgb(128, 128, 128)'),
                            yaxis=dict(
-                               backgroundcolor='rgb(255, 255, 255)'),
+                               backgroundcolor='rgb(128, 128, 128)'),
                            zaxis=dict(
-                               backgroundcolor='rgb(255, 255, 255)')
+                               backgroundcolor='rgb(128, 128, 128)')
                            ),
                 updatemenus=[dict(type="buttons",
                                   buttons=[dict(label="Play",
@@ -397,7 +536,7 @@ class LunarEnvironment(gym.Env, object):
                            go.Scatter3d(x=[position_data[i, 0]],
                                         y=[position_data[i, 1]],
                                         z=[position_data[i, 2]],
-                                        name="spacecraft")]
+                                        name="spacecraft", mode="markers+lines")]
                      ) for i in range(len(source_data))]
         )
 
@@ -405,3 +544,15 @@ class LunarEnvironment(gym.Env, object):
 
         if display:
             figure.show()
+
+
+    @staticmethod
+    def _get_planetary_data(destination_planet, epoch_history, source_planet):
+        source_data = []
+        destination_data = []
+        for epoch in epoch_history:
+            source_data_epoch = source_planet.eph(epoch)[0]
+            destination_data_epoch = destination_planet.eph(epoch)[0]
+            source_data.append(source_data_epoch)
+            destination_data.append(destination_data_epoch)
+        return source_data, destination_data

@@ -6,8 +6,8 @@ import sys
 import json
 
 sys.path.append("/nvme/ganymede/project")
-from earth_lunar_transfer.earth_lunar_old_implemntation.common_module import worker_process, run_spacecraft
-from earth_lunar_transfer.earth_lunar_old_implemntation.rl_agent import ActorCritic
+from earth_lunar_transfer.old_implemntation.common_module import worker_process, run_spacecraft
+from earth_lunar_transfer.old_implemntation.rl_agent import ActorCritic
 
 if __name__ == "__main__":
     # config options

@@ -17,12 +17,14 @@ moon_pos = []
 delta_pos = []
 action = np.array([0, 0, 0])
 
-# lunar_env.spacecraft_position = np.array(lunar_env.source_planet.eph(lunar_env.current_epoch)[0]) + np.array([2035383.3886006193, 2035383.3886006188, 2777890.732222725])
-# lunar_env.spacecraft_velocity = np.array(lunar_env.source_planet.eph(lunar_env.current_epoch)[1]) + np.array([-735.0637737897396, -735.0637737897393, 1060.278455294141])
+lunar_env.spacecraft_position = np.array(lunar_env.source_planet.eph(lunar_env.current_epoch)[0]) + np.array([2035383.3886006193, 2035383.3886006188, 2777890.732222725])
+lunar_env.spacecraft_velocity = np.array(lunar_env.source_planet.eph(lunar_env.current_epoch)[1]) + np.array([-735.0637737897396, -735.0637737897393, 1060.278455294141])
 
-for iter in range(5000):
+action = np.array([0, 0, 0])
+
+for iter in range(600):
     # action = np.random.uniform(-.1, .1, [3,])
-    action = np.array([0, 0, 0])
+    # action = np.array([0, 0, 0])
     state, reward, terminated, truncated, info = lunar_env.step(action)
     print(state["velocity"])
     forces.append(lunar_env.forces)
@@ -32,10 +34,10 @@ for iter in range(5000):
     delta_pos.append(lunar_env.delta_position)
 
     unit_direction_vector = -(lunar_env.delta_position / np.linalg.norm(lunar_env.delta_position))
-    # if iter < 140:
-    # action = 10 * unit_direction_vector  * (np.linalg.norm(lunar_env.delta_position) / 4e8)
-    # else:
-    #     action = 100 * unit_direction_vector
+    if iter < 140:
+        action = 10 * unit_direction_vector  * (np.linalg.norm(lunar_env.delta_position) / 4e8)
+    else:
+        action = 100 * unit_direction_vector
 
 print(lunar_env.fuel_mass)
 position_array = np.array(position_array)
@@ -87,7 +89,7 @@ plt.legend()
 plt.title("forces")
 plt.show()
 
-lunar_env.simulate(lunar_env.epoch_history, lunar_env.position_history, lunar_env.source_planet, lunar_env.destination_planet, "./elliptical.html", lunar_env.start_position, lunar_env.target_position)
+lunar_env.simulate(lunar_env.epoch_history, lunar_env.position_history, lunar_env.source_planet, lunar_env.destination_planet, "./temp.html", lunar_env.start_position, lunar_env.target_position)
 
 
 lunar_env.reset()

@@ -15,7 +15,7 @@ EARTH_MOON_MEAN_DISTANCE = 384467e3
 MOON_DISTANCE_FROM_BARYCENTER = 384467e3 - 4671e3
 MOON_SPEED_WRT_EARTH = 1023.056
 
-with open("./earth_lunar_transfer/rl_lib_implementation/env_config.json", "rb") as config_file:
+with open("earth_lunar_transfer/env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 action_space = Box(-1, 1, (3,), dtype=np.float32)

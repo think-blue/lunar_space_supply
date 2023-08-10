@@ -4,8 +4,8 @@ import pykep as pk
 import torch
 from torch import optim
 
-from earth_lunar_transfer.earth_lunar_old_implemntation.Spacecraft import Spacecraft
-from earth_lunar_transfer.earth_lunar_old_implemntation.rl_agent import run_episode, update_params
+from earth_lunar_transfer.old_implemntation.Spacecraft import Spacecraft
+from earth_lunar_transfer.old_implemntation.rl_agent import run_episode, update_params
 
 
 def create_planets(planet_names=('mercury', 'venus', 'earth', 'mars', 'jupiter')):
