@@ -113,6 +113,9 @@ class LunarEnvironment(gym.Env, object):
         self.experiment_name = env_config["exp_name"]
         self.episode_count = 0
 
+        self.terminated_condition = False
+        self.truncated_condition = False
+
         if not os.path.exists(os.path.join(self.training_data_path, self.experiment_name)):
             os.makedirs(os.path.join(self.training_data_path, self.experiment_name))
 
@@ -242,17 +245,17 @@ class LunarEnvironment(gym.Env, object):
         velocity_threshold = 40
 
         # terminal state
-        terminated = False
-        truncated = False
+        self.terminated_condition = False
+        self.truncated_condition = False
         info = {}
 
         if np.linalg.norm(self.delta_position) <= position_threshold \
                 and np.linalg.norm(self.delta_velocity) <= velocity_threshold:
-            terminated = True
+            self.terminated_condition = True
 
-        # truncated state time limit, out of fuel todo: add out of bounds values
+        # self.truncated state time limit, out of fuel todo: add out of bounds values
         if self.time_step > self.max_time_steps or self.fuel_mass < 0:
-            truncated = True
+            self.truncated_condition = True
 
         time_delta = self.time_step_duration * 24 * 3600  # in seconds
         num_steps = self.integration_steps
@@ -304,7 +307,9 @@ class LunarEnvironment(gym.Env, object):
         self.normalised_state = self._normalise_state(self.state)
 
         self._store_episode_history()
-        return self.normalised_state, self.reward, terminated, truncated, info
+        print(self.state)
+        print(self.normalised_state, "\n")
+        return self.normalised_state, self.reward, self.terminated_condition, self.truncated_condition, info
 
     def _store_episode_history(self):
         # todo: make it a csv writer
