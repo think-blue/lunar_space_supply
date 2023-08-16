@@ -131,7 +131,7 @@ class LunarEnvironment(gym.Env, object):
             csv_writer.writerow(["mass", "pos_x", "pos_y", "pos_z", "vel_x", "vel_y", "vel_z",
                                  "delta_pos_x", "delta_pos_y", "delta_pos_z", "delta_vel_x", "delta_vel_y",
                                  "delta_vel_z",
-                                 "time_step", "epoch", "episode", "reward"])
+                                 "time_step", "epoch", "episode", "reward"] + [f"reward_{i}" for i in range(10)])
 
         print(id(self))
 
@@ -176,7 +176,7 @@ class LunarEnvironment(gym.Env, object):
         self.delta_velocity = self.state["delta_velocity"]
         self.time_step = self.state["time_step"].item()
         self.reward = 0
-        self.reward_components = [0, 0, 0]
+        self.reward_components = [0, 0, 0, 0, 0, 0]
 
         self.start_position = self.spacecraft_position
         self.start_velocity = self.spacecraft_velocity
@@ -212,6 +212,10 @@ class LunarEnvironment(gym.Env, object):
         info = {}
 
         self.normalised_state = self._normalise_state(self.state)
+
+        self.terminated_condition = False
+        self.truncated_condition = False
+
         return self.normalised_state, info
 
     @staticmethod
@@ -240,28 +244,10 @@ class LunarEnvironment(gym.Env, object):
         if self.env_config["action_space"] == "discrete":
             action = self.transform_action(action)
 
-        # todo: add threshold for position and velocity
-        position_threshold = 10000
-        velocity_threshold = 40
-
-        # terminal state
-        self.terminated_condition = False
-        self.truncated_condition = False
-        info = {}
-
-        if np.linalg.norm(self.delta_position) <= position_threshold \
-                and np.linalg.norm(self.delta_velocity) <= velocity_threshold:
-            self.terminated_condition = True
-
-        # self.truncated state time limit, out of fuel todo: add out of bounds values
-        if self.time_step > self.max_time_steps or self.fuel_mass < 0:
-            self.truncated_condition = True
 
         time_delta = self.time_step_duration * 24 * 3600  # in seconds
         num_steps = self.integration_steps
-
         time_array = np.arange(0, time_delta, num_steps)
-        # implement new state of mass
         detailed_spacecraft_state = odeint(self.accelerate,
                                            y0=np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
                                                              axis=0),
@@ -271,8 +257,8 @@ class LunarEnvironment(gym.Env, object):
                                            args=(action, (self.payload_mass + self.fuel_mass),
                                                  self.current_epoch))
         ##########################
-        self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
-                                                             axis=0), action, self.payload_mass + self.fuel_mass, self.current_epoch)
+        # self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
+        #                                                      axis=0), action, self.payload_mass + self.fuel_mass, self.current_epoch)
         ######################################
 
         # todo: check what odeint.T does
@@ -292,7 +278,7 @@ class LunarEnvironment(gym.Env, object):
             target_velocity=None
         )
 
-        self.reward, self.reward_components = self._get_reward()
+        self.reward, self.reward_components, self.truncated_condition, self.terminated_condition = self._get_reward()
 
         self.state = dict(
             delta_position=self.delta_position,
@@ -307,8 +293,7 @@ class LunarEnvironment(gym.Env, object):
         self.normalised_state = self._normalise_state(self.state)
 
         self._store_episode_history()
-        print(self.state)
-        print(self.normalised_state, "\n")
+        info = {}
         return self.normalised_state, self.reward, self.terminated_condition, self.truncated_condition, info
 
     def _store_episode_history(self):
@@ -350,6 +335,28 @@ class LunarEnvironment(gym.Env, object):
         """
         Everything is in SI units
         """
+
+        position_threshold = 10000
+        velocity_threshold = 40
+
+        goal_achieved_reward = 0
+        if np.linalg.norm(self.delta_position) <= position_threshold \
+                and np.linalg.norm(self.delta_velocity) <= velocity_threshold:
+            self.terminated_condition = True
+            goal_achieved_reward = 20
+
+        time_penalty = 0
+        if self.time_step > self.max_time_steps:
+            self.truncated_condition = True
+            time_penalty = -10
+
+        fuel_penalty = 0
+        if self.fuel_mass < 0:
+            self.truncated_condition = True
+            fuel_penalty = -10
+
+        # todo: add out of bounds values
+
         # static destination based on the end epoch
         dest_position = self.target_position
         position_error = (self.spacecraft_position - dest_position)
@@ -362,14 +369,11 @@ class LunarEnvironment(gym.Env, object):
         velocity_reward = - np.linalg.norm(
             self.spacecraft_velocity - self.target_velocity) / self.MOON_SPEED_WRT_EARTH  # astronomical units
 
-        time_penalty = 0
-        if self.time_step > self.max_time_steps:
-            time_penalty = -30
 
-        reward = 10 + positional_reward + mass_reward + velocity_reward + time_penalty
-        # print(positional_reward, mass_reward, velocity_reward)
-        reward_components = [positional_reward, mass_reward, velocity_reward, time_penalty]
-        return reward, reward_components
+        reward = 10 + positional_reward + mass_reward + velocity_reward + time_penalty + fuel_penalty + goal_achieved_reward
+
+        reward_components = [positional_reward, mass_reward, velocity_reward, time_penalty, fuel_penalty, goal_achieved_reward]
+        return reward, reward_components, self.truncated_condition, self.terminated_condition
 
     def _update_state(self, fuel_mass, position, velocity, epoch, time_step, target_position, target_velocity):
         self.fuel_mass = fuel_mass
