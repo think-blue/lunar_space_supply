@@ -27,7 +27,7 @@
   "kernel_path": "/nvme/lunar_space_geetansh/data/kernels/de441.bsp",
   "data_path": "/nvme/lunar_space_geetansh/data/training_data",
 
-  "exp_name": "try_run",
+  "exp_name": "trying",
   "mlflow_configured": true,
 
   "discount_factor": 0.99

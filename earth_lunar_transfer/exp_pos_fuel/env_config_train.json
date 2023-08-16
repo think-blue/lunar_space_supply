@@ -4,7 +4,7 @@
   "payload_mass": 1000,
   "fuel_mass": 1000,
   "specific_impulse": 3000,
-  "max_thrust": 10,
+  "max_thrust": 50,
 
   "start_epoch": 0,
   "num_days": 3,
@@ -14,22 +14,19 @@
   "source_object_orbit_radius": 20000e3,
   "source_inclination_angle": 0,
   "source_azimuthal_angle": 0,
-
   "dest_planet": "earth",
   "dest_object_orbit_radius": 40000e3,
   "dest_inclination_angle": 0,
   "dest_azimuthal_angle": 0,
-
   "observer_body": "EARTH-MOON BARYCENTER",
+  "max_steps": 1500,
 
   "integration_steps": 10,
 
-  "kernel_path": "/nvme/lunar_space_geetansh/data/kernels/de441.bsp",
-  "data_path": "/nvme/lunar_space_geetansh/data/training_data",
+  "kernel_path": "/nvme/lunar_space_supply/data/kernels/de441.bsp",
+  "data_path": "/nvme/lunar_space_supply/data/training_data",
 
-  "exp_name": "try_run",
-  "mlflow_configured": true,
-
-  "discount_factor": 0.99
+  "exp_name": "reference_experiment_time_penalty",
+  "mlflow_configured": true
 
 }

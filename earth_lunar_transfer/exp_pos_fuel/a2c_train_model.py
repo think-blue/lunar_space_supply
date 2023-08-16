@@ -1,13 +1,7 @@
 from ray.rllib.algorithms.a2c import A2CConfig
 from ray.rllib.algorithms.dqn import DQNConfig
 import json
-
-import sys
-# sys.path.append("/nvme/lunar_space_supply")
-# sys.path.append("/nvme/lunar_space_supply/earth_lunar_transfer")
-# from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
-from earth_lunar_transfer.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
-
+from lunarenvironment import LunarEnvironment
 import mlflow
 from datetime import datetime
 
@@ -16,11 +10,11 @@ with open("env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 exp_description = "state: state with fixed time period of 3 days\n" \
-                  "reward: reward based on position, time penalty, and discounted reward\n" \
+                  "reward: reward based on position, velocity, and fuel errors\n" \
                   "environment: continuous action space\n" \
                   "algorithm: A2C"
 
-mlflow.set_tracking_uri(uri="http://127.0.0.1:5001")
+mlflow.set_tracking_uri(uri="http://127.0.0.1:5000")
 mlflow.set_experiment(experiment_name=env_config["exp_name"])
 with mlflow.start_run(description=exp_description) as current_run:
     run_id = current_run.info.run_id
@@ -29,17 +23,17 @@ with mlflow.start_run(description=exp_description) as current_run:
 
     a2c_config = (
         A2CConfig()
-        .environment(env=LunarEnvPosition, env_config=env_config)
+        .environment(env=LunarEnvironment, env_config=env_config)
         .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
         .resources(num_gpus=1)
+        .training(train_batch_size=500)
         .evaluation(evaluation_num_workers=1)
     )
 
     a2c_algo = a2c_config.build()
 
-
     print("training")
-    for iteration in range(4005):
+    for iteration in range(1002):
         train_results = a2c_algo.train()
         print(train_results)
         mlflow.log_metric("episode_reward_max", train_results["episode_reward_max"], iteration)

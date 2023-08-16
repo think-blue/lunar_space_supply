@@ -1,4 +1,4 @@
-from earth_lunar_transfer.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
+from earth_lunar_transfer.exp_pos_fuel.lunarenvironment import LunarEnvironment
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 with open("/nvme/lunar_space_supply/earth_lunar_transfer/env_config_test.json", "rb") as config_file:
     env_config = json.load(config_file)
 
-lunar_env = LunarEnvPosition(env_config)
+lunar_env = LunarEnvironment(env_config)
 
 a = lunar_env.reset()
 
