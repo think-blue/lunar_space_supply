@@ -1,3 +1,9 @@
+import os
+print (os.environ['PYTHONPATH'])
+
+import sys
+print (sys.path)
+
 from ray.rllib.algorithms.a2c import A2CConfig
 from ray.rllib.algorithms.dqn import DQNConfig
 import json
@@ -27,9 +33,11 @@ with mlflow.start_run(description=exp_description) as current_run:
     env_config["mlflow_run_id"] = run_id
     mlflow.log_params(env_config)
 
+    # model_config = dict(fcnet_hiddens=[128, 128, 128], fcnet_activation="relu")
     a2c_config = (
         A2CConfig()
         .environment(env=LunarEnvPosition, env_config=env_config)
+        .training(grad_clip=3, lr=0.00004, gamma=1)
         .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
         .resources(num_gpus=1)
         .evaluation(evaluation_num_workers=1)
@@ -37,16 +45,19 @@ with mlflow.start_run(description=exp_description) as current_run:
 
     a2c_algo = a2c_config.build()
 
-
     print("training")
-    for iteration in range(4005):
+    for iteration in range(8005):
         train_results = a2c_algo.train()
-        print(train_results)
+        # print(train_results)
         mlflow.log_metric("episode_reward_max", train_results["episode_reward_max"], iteration)
         mlflow.log_metric("episode_reward_min", train_results["episode_reward_min"], iteration)
         mlflow.log_metric("episode_reward_mean", train_results["episode_reward_mean"], iteration)
         mlflow.log_metric("episodes_this_iter", train_results["episodes_this_iter"], iteration)
         mlflow.log_metric("episode_len_mean", train_results['episode_len_mean'], iteration)
+        mlflow.log_metric("policy_loss",
+                          train_results['info']['learner']['default_policy']['learner_stats']['policy_loss'], iteration)
+        mlflow.log_metric("vf_loss", train_results['info']['learner']['default_policy']['learner_stats']['vf_loss'],
+                          iteration)
         # mlflow.log_metric("episode_rewards", train_results['hist_stats']['episode_reward'])
         if iteration % 50 == 0:
             now = datetime.now()
@@ -56,11 +67,10 @@ with mlflow.start_run(description=exp_description) as current_run:
             path = a2c_algo.save()
             print(f"saved to {path}")
             mlflow.log_param(f"path_{iteration}", path)
-        print(iteration)
+            print(iteration)
 
     evaluation_results = a2c_algo.evaluate()
 
 pass
 # visualise using
 # tensorboard --logdir=~/ray_results
-
