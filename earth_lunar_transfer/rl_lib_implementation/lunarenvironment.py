@@ -11,6 +11,12 @@ from time import time
 import mlflow
 import plotly.express as px
 
+class ActionSpace:
+    def __init__(self):
+        single_step=np.array([1, 1, 1])
+        self.action_bounds = np.array([-1*single_step, single_step])
+        self.n_outputs = self.action_bounds.shape[1]
+
 
 class LunarEnvironment(gym.Env, object):
     """
@@ -36,6 +42,7 @@ class LunarEnvironment(gym.Env, object):
         self.reward_components = None
         self.render_mode = "ansi"
         self.env_config = env_config
+        self.action_space = ActionSpace()
 
         if self.env_config["action_space"] == "discrete":
             self.action_space = MultiDiscrete([10, 10, 10])
