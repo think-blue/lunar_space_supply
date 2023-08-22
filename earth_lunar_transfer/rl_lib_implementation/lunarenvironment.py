@@ -43,7 +43,6 @@ class LunarEnvironment(gym.Env, object):
         self.reward_components = None
         self.render_mode = "ansi"
         self.env_config = env_config
-        self.action_space = ActionSpace()
 
         if self.env_config["action_space"] == "discrete":
             self.action_space = MultiDiscrete([10, 10, 10])
@@ -186,7 +185,7 @@ class LunarEnvironment(gym.Env, object):
         self.delta_velocity = self.state["delta_velocity"]
         self.time_step = self.state["time_step"].item()
         self.reward = 0
-        self.reward_components = [0, 0, 0]
+        self.reward_components = [0, 0, 0, 0]
 
         self.start_position = self.spacecraft_position
         self.start_velocity = self.spacecraft_velocity
