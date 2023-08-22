@@ -21,7 +21,7 @@ class CriticNN(nn.Module):
             self.layers.append(activation)
         
     def forward(self, x):
-        x = torch.cat(x)
+        x = torch.cat(x, axis=1)
         policy = self.layers[0](x)
         for layer in self.layers[1:]:
             policy = layer(policy)
