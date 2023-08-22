@@ -222,7 +222,7 @@ class LunarEnvironment(gym.Env, object):
         info = {}
 
         self.normalised_state = self._normalise_state(self.state)
-        return self.normalised_state, info
+        return self._get_state_array(self.normalised_state), info
 
     @staticmethod
     def get_orbital_speed(radius, mu):
@@ -317,8 +317,11 @@ class LunarEnvironment(gym.Env, object):
         self.normalised_state = self._normalise_state(self.state)
 
         self._store_episode_history()
-        return self.normalised_state, self.reward, terminated, truncated, info
+        return self._get_state_array(self.normalised_state), self.reward, terminated, truncated, info
 
+    def _get_state_array(self, state):
+        return np.hstack([state[st] for st in self.env_config["states"]])
+    
     def _store_episode_history(self):
         # todo: make it a csv writer
 
