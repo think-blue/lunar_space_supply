@@ -2,7 +2,6 @@ import os
 import torch
 import numpy as np
 from torch.autograd import Variable
-from torch_geometric.data import Data
 from time import time
 
 
@@ -44,28 +43,7 @@ def to_tensor(ndarray, volatile=False, requires_grad=False, dtype=FLOAT):
 
 
 def batchify(molecules, data=True):
-    data_function = {
-        True: lambda mol: mol,
-        False: lambda mol: mol.data
-     }[data]
-    
-    X = torch.vstack([data_function(mol).x for mol in molecules])
-
-    data_count = [data_function(mol).x.shape[0] for mol in molecules]
-    edge_index = torch.hstack([
-        data_function(mol).edge_index + (0 if index == 0 else data_count[index - 1])
-        for index, mol in enumerate(molecules)
-    ])
-
-    edge_attr = torch.vstack([
-        data_function(mol).edge_attr for mol in molecules
-    ])
-
-    batch = torch.tensor(np.concatenate(
-        [[i] * l for i, l in enumerate(data_count)]
-    ))
-
-    return Data(x=X, edge_index=edge_index, batch=batch, edge_attr=edge_attr)
+    return molecules
 
 def filter_by_distance(protein, ligand, distance_threshold=4):
     ligand_coords = ligand.atoms.coords
