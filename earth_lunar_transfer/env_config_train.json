@@ -8,6 +8,7 @@
 
   "start_epoch": 0,
   "num_days": 3,
+  "time_step_duration_2": 0.0006944,
   "time_step_duration": 0.020833,
 
   "source_planet": "moon",
@@ -24,12 +25,25 @@
 
   "integration_steps": 10,
 
-  "kernel_path": "/nvme/lunar_space_geetansh/data/kernels/de441.bsp",
-  "data_path": "/nvme/lunar_space_geetansh/data/training_data",
+  "kernel_path": "/Users/in-divye.singh/Documents/Projects/IAC/lunar_space_supply/data/kernels/de441.bsp",
+  "data_path": "/Users/in-divye.singh/Documents/Projects/IAC/lunar_space_supply/data/testing",
 
   "exp_name": "try_run",
   "mlflow_configured": true,
 
-  "discount_factor": 0.99
+  "discount_factor": 0.99,
 
+  "states": [
+          "position",
+          "velocity",
+          "delta_position",
+          "delta_velocity",
+          "mass"
+  ],
+
+  "agent_config" : {
+    "training_algorithm": "ddpg",
+    "n_episodes": 1500,
+    "save_model_from": 700
+  }
 }
