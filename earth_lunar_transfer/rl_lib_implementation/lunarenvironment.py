@@ -13,7 +13,8 @@ import plotly.express as px
 
 class ActionSpace:
     def __init__(self):
-        single_step=np.array([1, 1, 1])
+        self.max_action = 10
+        single_step=np.array([1, 1, 1])*self.max_action
         self.action_bounds = np.array([-1*single_step, single_step])
         self.n_outputs = self.action_bounds.shape[1]
 
@@ -60,6 +61,11 @@ class LunarEnvironment(gym.Env, object):
                 "time_step": Box(low=0, high=1.2, shape=(1,))
             }
         )
+        
+        self.action_space = ActionSpace()
+        self.input_shape = sum(self.observation_space[st].shape[0]
+                               for st in self.env_config['states'])
+        
         self.reward_range = None
 
         # spacecraft variables
