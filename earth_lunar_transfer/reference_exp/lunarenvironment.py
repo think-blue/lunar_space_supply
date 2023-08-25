@@ -25,6 +25,7 @@ class LunarEnvironment(gym.Env, object):
         """the environment where the
         target position and target velocity is fixed"""
 
+        self.action = None
         self.start_velocity = None
         self.start_position = None
         self.forces = None
@@ -36,19 +37,21 @@ class LunarEnvironment(gym.Env, object):
         self.env_config = env_config
 
         if self.env_config["action_space"] == "discrete":
-            self.action_space = MultiDiscrete([10, 10, 10])
+            # make it (2*n + 1)
+            self.action_space = MultiDiscrete([11, 11, 11])
         else:
             self.action_space = Box(-env_config["max_thrust"], env_config["max_thrust"], (3,), dtype=np.float32)
 
         self.observation_space = Dict(
             {
-                "position": Box(low=-10, high=10, shape=(3,)),
-                "velocity": Box(low=-50, high=50, shape=(3,)),
+                "position": Box(low=-800, high=800, shape=(3,)),
+                "velocity": Box(low=-500, high=500, shape=(3,)),
                 "mass": Box(low=0, high=1, shape=(1,)),
-                "delta_position": Box(low=-10, high=10, shape=(3,)),
-                "delta_velocity": Box(low=-50, high=50, shape=(3,)),
+                "delta_position": Box(low=-800, high=800, shape=(3,)),
+                "delta_velocity": Box(low=-500, high=500, shape=(3,)),
                 # todo: debug this time step getting out of bounds
-                "time_step": Box(low=0, high=1.2, shape=(1,))
+                "time_step": Box(low=0, high=1.2, shape=(1,)),
+                # todo: resultant force and moon and earth position
             }
         )
         self.reward_range = None
@@ -95,6 +98,9 @@ class LunarEnvironment(gym.Env, object):
         self.delta_position = None
         self.delta_velocity = None
         self.time_step = None
+
+        self.previous_spacecraft_position = None
+        self.previous_spacecraft_velocity = None
 
         self.fuel_mass_history = []
         self.position_history = []
@@ -181,6 +187,13 @@ class LunarEnvironment(gym.Env, object):
         self.target_position = target_position
         self.target_velocity = target_velocity
 
+        self.previous_spacecraft_position = self.spacecraft_position
+        self.previous_spacecraft_velocity = self.spacecraft_velocity
+
+        action = np.array([0, 0, 0])
+        self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
+                                                             axis=0),action , self.payload_mass + self.fuel_mass, self.current_epoch)
+
         if self.env_config["mlflow_configured"]:
             with mlflow.start_run(run_id=self.env_config["mlflow_run_id"]):
                 mlflow.log_param(f"start_speed_{self.object_id}", np.linalg.norm(spacecraft_velocity))
@@ -238,9 +251,13 @@ class LunarEnvironment(gym.Env, object):
 
         self._store_episode_history()
 
+        self.previous_spacecraft_position = self.spacecraft_position
+        self.previous_spacecraft_velocity = self.spacecraft_velocity
+
         # todo: test this function out
         if self.env_config["action_space"] == "discrete":
             action = self.transform_action(action)
+        self.action = action
 
         time_delta = self.time_step_duration * 24 * 3600  # in seconds
         num_steps = self.integration_steps
@@ -254,8 +271,7 @@ class LunarEnvironment(gym.Env, object):
                                            args=(action, (self.payload_mass + self.fuel_mass),
                                                  self.current_epoch))
         ##########################
-        self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
-                                                             axis=0), action, self.payload_mass + self.fuel_mass, self.current_epoch)
+
         ######################################
 
         # todo: check what odeint.T does
@@ -274,6 +290,10 @@ class LunarEnvironment(gym.Env, object):
             target_position=None,
             target_velocity=None
         )
+
+        self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
+                                                                axis=0), action, self.payload_mass + self.fuel_mass,
+                                                 self.current_epoch)
 
         self.reward, self.reward_components, self.truncated_condition, self.terminated_condition = self._get_reward()
 
@@ -390,11 +410,12 @@ class LunarEnvironment(gym.Env, object):
     def _normalise_state(self, state):
         n_state = {
             "mass": (state["mass"] - self.env_config["payload_mass"]) / (
-                self.env_config["payload_mass"]), "position": state["position"] / self.EARTH_MOON_MEAN_DISTANCE,
-            "velocity": state["velocity"] / np.linalg.norm(self.target_velocity),
+                self.env_config["payload_mass"]),
+            "position": state["position"] / self.EARTH_MOON_MEAN_DISTANCE,
+            "velocity": state["velocity"] / self.MOON_SPEED_WRT_EARTH * 3,  # np.linalg.norm(self.target_velocity)
             "delta_position": state["delta_position"] / (
                     self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius),
-            "delta_velocity": state["delta_velocity"] / self.MOON_SPEED_WRT_EARTH,
+            "delta_velocity": state["delta_velocity"] / self.MOON_SPEED_WRT_EARTH * 3,
             "time_step": state["time_step"] / self.max_time_steps
         }
         # todo: check velocity normalisation values
@@ -450,12 +471,12 @@ class LunarEnvironment(gym.Env, object):
             self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon
         )
 
-    @staticmethod
-    def transform_action(action):
-        output_start = -.1
-        output_end = .1
+
+    def transform_action(self, action):
+        output_start = - self.env_config["max_thrust"]
+        output_end = self.env_config["max_thrust"]
         input_start = 0
-        input_end = 9
+        input_end = self.action_space.nvec[0] - 1
         transformed_action = output_start + ((output_end - output_start) / (input_end - input_start)) * (
                 action - input_start)
         return transformed_action
