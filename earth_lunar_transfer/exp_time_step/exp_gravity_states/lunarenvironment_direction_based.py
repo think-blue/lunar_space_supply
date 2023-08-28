@@ -175,11 +175,11 @@ class LunarEnvForceHelper(LunarEnvironment):
         #
         # cosine_vel_reward = cosine_similarity_vel_new - cosine_similarity_vel_old
 
-        reward = delta_mag_reward + delta_mag_reward_vel + cosine_reward + cosine_vel_reward \
+        reward = delta_mag_reward + delta_mag_reward_vel + cosine_reward +  \
                  + time_penalty + fuel_penalty + earth_region_penalty + moon_region_penalty + space_penalty + goal_achieved_reward
 
         # print(positional_reward, mass_reward, velocity_reward)
-        reward_components = [delta_mag_reward, cosine_reward, delta_mag_reward_vel, cosine_vel_reward, time_penalty, fuel_penalty,
+        reward_components = [delta_mag_reward, cosine_reward, delta_mag_reward_vel, time_penalty, fuel_penalty,
                              earth_region_penalty, moon_region_penalty, space_penalty, goal_achieved_reward]
 
         return reward, reward_components, self.truncated_condition, self.terminated_condition
