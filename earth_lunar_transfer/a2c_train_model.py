@@ -1,18 +1,25 @@
 import os
-print (os.environ['PYTHONPATH'])
+
+print(os.environ['PYTHONPATH'])
 
 import sys
-print (sys.path)
+
+print(sys.path)
 
 from ray.rllib.algorithms.a2c import A2CConfig
 from ray.rllib.algorithms.dqn import DQNConfig
+from ray.rllib.algorithms.ppo import PPOConfig
+
 import json
 
 import sys
 # sys.path.append("/nvme/lunar_space_supply")
 # sys.path.append("/nvme/lunar_space_supply/earth_lunar_transfer")
 # from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
-from earth_lunar_transfer.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
+# # from earth_lunar_transfer.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
+# from earth_lunar_transfer.exp_time_step.exp_no_gravity.lunarenvironment_negative import LunarEnvNoGravity
+# from earth_lunar_transfer.exp_time_step.exp_gravity_states.lunarenvironment_direction_based import LunarEnvForceHelper
+from earth_lunar_transfer.exp_time_step.exp_gravity_states.lunarenvironment_direction_based_position import LunarEnvForceHelper
 
 import mlflow
 from datetime import datetime
@@ -21,12 +28,13 @@ from datetime import datetime
 with open("env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
 
-exp_description = "state: state with fixed time period of 3 days\n" \
-                  "reward: reward based on position, time penalty, and discounted reward\n" \
-                  "environment: continuous action space\n" \
-                  "algorithm: A2C"
+exp_description = """
+        - reward based on velocity mag.
+        - reward based on position direction and mag
+        - previous position history is defined
+        - reward is based on mag. change error"""
 
-mlflow.set_tracking_uri(uri="http://127.0.0.1:5001")
+mlflow.set_tracking_uri(uri="http://127.0.0.1:5000")
 mlflow.set_experiment(experiment_name=env_config["exp_name"])
 with mlflow.start_run(description=exp_description) as current_run:
     run_id = current_run.info.run_id
@@ -35,12 +43,18 @@ with mlflow.start_run(description=exp_description) as current_run:
 
     # model_config = dict(fcnet_hiddens=[128, 128, 128], fcnet_activation="relu")
     a2c_config = (
-        A2CConfig()
-        .environment(env=LunarEnvPosition, env_config=env_config)
-        .training(grad_clip=3, lr=0.00004, gamma=1)
-        .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
-        .resources(num_gpus=1)
+        # A2CConfig()
+        PPOConfig()
+        .environment(env=LunarEnvForceHelper, env_config=env_config)
+        .training(grad_clip=3, lr_schedule=[[0, 1e-6], #0.00002 this works
+                                            [2e6, 0.00000006],
+                                            [20000000, 0.000000000001]],
+                  gamma=0.9)
+        .rollouts(num_rollout_workers=5, num_envs_per_worker=5)
         .evaluation(evaluation_num_workers=1)
+        .framework("torch")
+        .debugging(log_level="INFO")
+        .offline_data(output="/nvme/lunar_space_supply/data/training_data/logs")
     )
 
     a2c_algo = a2c_config.build()
@@ -63,7 +77,7 @@ with mlflow.start_run(description=exp_description) as current_run:
             now = datetime.now()
             current_time = now.strftime("%H:%M:%S")
             print(f"{current_time}: trained {iteration + 1} epochs")
-        if iteration % 400 == 0:
+        if iteration % 100 == 0:
             path = a2c_algo.save()
             print(f"saved to {path}")
             mlflow.log_param(f"path_{iteration}", path)
@@ -72,5 +86,6 @@ with mlflow.start_run(description=exp_description) as current_run:
     evaluation_results = a2c_algo.evaluate()
 
 pass
+print()
 # visualise using
 # tensorboard --logdir=~/ray_results
