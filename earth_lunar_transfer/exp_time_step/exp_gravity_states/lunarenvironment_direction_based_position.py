@@ -116,8 +116,7 @@ class LunarEnvForceHelper(LunarEnvironment):
         velocity_threshold = 400
 
         goal_achieved_reward = 0
-        if np.linalg.norm(self.delta_position) <= position_threshold and np.linalg.norm(
-                self.delta_velocity) <= velocity_threshold:
+        if np.linalg.norm(self.delta_position) <= position_threshold:
             self.terminated_condition = True
             goal_achieved_reward = 2000
 
@@ -175,7 +174,7 @@ class LunarEnvForceHelper(LunarEnvironment):
         #
         # cosine_vel_reward = cosine_similarity_vel_new - cosine_similarity_vel_old
 
-        reward = delta_mag_reward + delta_mag_reward_vel + cosine_reward +  \
+        reward = delta_mag_reward + cosine_reward +  \
                  + time_penalty + fuel_penalty + earth_region_penalty + moon_region_penalty + goal_achieved_reward
 
         # print(positional_reward, mass_reward, velocity_reward)
