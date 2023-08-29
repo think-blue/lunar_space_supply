@@ -22,8 +22,8 @@ class LunarEnvPosition(LunarEnvironment):
         discount factor is there
         """
 
-        position_threshold = 10000
-        velocity_threshold = 40
+        position_threshold = 1000e3
+        velocity_threshold = 400
 
         goal_achieved_reward = 0
         if np.linalg.norm(self.delta_position) <= position_threshold:
@@ -41,11 +41,11 @@ class LunarEnvPosition(LunarEnvironment):
             fuel_penalty = -10
 
         regions_penalty = 0
-        if np.linalg.norm(self.spacecraft_position - self.source_planet.eph(self.current_epoch)[0]) < 300e3:
+        if np.linalg.norm(self.spacecraft_position - self.source_planet.eph(self.current_epoch)[0]) < 1737e3 + 300e3:
             regions_penalty = -10
             self.truncated_condition = True
 
-        if np.linalg.norm(self.spacecraft_position - self.destination_planet.eph(self.current_epoch)[0]) < 1000e3:
+        if np.linalg.norm(self.spacecraft_position - self.destination_planet.eph(self.current_epoch)[0]) < 6738e3 + 300e3:
             regions_penalty = -10
             self.truncated_condition = True
 
@@ -56,10 +56,10 @@ class LunarEnvPosition(LunarEnvironment):
                 self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius)
         positional_reward = - positional_error_magnitude
 
-
-        discounted_reward = 2 * math.pow(self.env_config["discount_factor"], self.time_step)
-        reward = discounted_reward + positional_reward + time_penalty + goal_achieved_reward + fuel_penalty + regions_penalty
+        #todo: going towards or away from the end goal
+        # discounted_reward = 2 * math.pow(self.env_config["discount_factor"], self.time_step)
+        reward = positional_reward + time_penalty + goal_achieved_reward + fuel_penalty + regions_penalty
         # print(positional_reward, mass_reward, velocity_reward)
-        reward_components = [discounted_reward, positional_reward, time_penalty, goal_achieved_reward, fuel_penalty, regions_penalty]
+        reward_components = [positional_reward, time_penalty, goal_achieved_reward, fuel_penalty, regions_penalty]
 
         return reward, reward_components, self.truncated_condition, self.terminated_condition
