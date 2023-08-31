@@ -5,6 +5,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium.spaces import Box, Dict, MultiDiscrete
 import pykep as pk
+from pyparsing import nestedExpr
 from scipy.integrate import odeint
 import plotly.graph_objects as go
 import mlflow
@@ -45,12 +46,12 @@ class LunarEnvironment(gym.Env, object):
         self.observation_space = Dict(
             {
                 "position": Box(low=-800, high=800, shape=(3,)),
-                "velocity": Box(low=-500, high=500, shape=(3,)),
+                # "velocity": Box(low=-500, high=500, shape=(3,)),
                 "mass": Box(low=0, high=1, shape=(1,)),
                 "delta_position": Box(low=-800, high=800, shape=(3,)),
-                "delta_velocity": Box(low=-500, high=500, shape=(3,)),
+                # "delta_velocity": Box(low=-500, high=500, shape=(3,)),
                 # todo: debug this time step getting out of bounds
-                "time_step": Box(low=0, high=1.2, shape=(1,)),
+                # "time_step": Box(low=0, high=1.2, shape=(1,)),
                 # todo: resultant force and moon and earth position
             }
         )
@@ -104,9 +105,9 @@ class LunarEnvironment(gym.Env, object):
 
         self.fuel_mass_history = []
         self.position_history = []
-        self.velocity_history = []
+        # self.velocity_history = []
         self.delta_position_history = []
-        self.delta_velocity_history = []
+        # self.delta_velocity_history = []
         self.time_step_history = []
         self.epoch_history = []
         self.reward_history = []
@@ -127,7 +128,7 @@ class LunarEnvironment(gym.Env, object):
                                                     self.object_id + ".csv")
 
         if env_config["mlflow_configured"]:
-            with mlflow.start_run(run_id=env_config["mlflow_run_id"]):
+            with mlflow.start_run(run_id=env_config["mlflow_run_id"], nested=True):
                 mlflow.log_param(f"train_csv_data_path_{id(self)}", self.save_training_data_path)
                 pass
         with open(f"{self.save_training_data_path}", "a") as csv_file:
@@ -167,18 +168,19 @@ class LunarEnvironment(gym.Env, object):
         self.time_step = 0
         self.state = dict(
             delta_position=spacecraft_position - target_position,
-            delta_velocity=spacecraft_velocity - target_velocity,
+            # delta_velocity=spacecraft_velocity - target_velocity,
             mass=np.array([spacecraft_mass]),
             position=spacecraft_position,
-            time_step=np.array([self.time_step]),
-            velocity=spacecraft_velocity)
+            # time_step=np.array([self.time_step]),
+            # velocity=spacecraft_velocity
+        )
 
         self.spacecraft_mass = self.state["mass"].item()
         self.spacecraft_position = self.state["position"]
-        self.spacecraft_velocity = self.state["velocity"]
+        self.spacecraft_velocity = spacecraft_velocity #self.state["velocity"]
         self.delta_position = self.state["delta_position"]
-        self.delta_velocity = self.state["delta_velocity"]
-        self.time_step = self.state["time_step"].item()
+        # self.delta_velocity = self.state["delta_velocity"]
+        self.time_step = self.time_step #self.state["time_step"].item()
         self.reward = 0
         self.reward_components = None
 
@@ -299,11 +301,11 @@ class LunarEnvironment(gym.Env, object):
 
         self.state = dict(
             delta_position=self.delta_position,
-            delta_velocity=self.delta_velocity,
+            # delta_velocity=self.delta_velocity,
             mass=np.array([self.spacecraft_mass]),
             position=self.spacecraft_position,
-            time_step=np.array([self.time_step]),
-            velocity=self.spacecraft_velocity,
+            # time_step=np.array([self.time_step]),
+            # velocity=self.spacecraft_velocity,
 
         )
 
@@ -412,11 +414,11 @@ class LunarEnvironment(gym.Env, object):
             "mass": (state["mass"] - self.env_config["payload_mass"]) / (
                 self.env_config["payload_mass"]),
             "position": state["position"] / self.EARTH_MOON_MEAN_DISTANCE,
-            "velocity": state["velocity"] / self.MOON_SPEED_WRT_EARTH * 3,  # np.linalg.norm(self.target_velocity)
+            # "velocity": state["velocity"] / self.MOON_SPEED_WRT_EARTH * 3,  # np.linalg.norm(self.target_velocity)
             "delta_position": state["delta_position"] / (
                     self.EARTH_MOON_MEAN_DISTANCE - self.destination_object_orbit_radius),
-            "delta_velocity": state["delta_velocity"] / self.MOON_SPEED_WRT_EARTH * 3,
-            "time_step": state["time_step"] / self.max_time_steps
+            # "delta_velocity": state["delta_velocity"] / self.MOON_SPEED_WRT_EARTH * 3,
+            # "time_step": state["time_step"] / self.max_time_steps
         }
         # todo: check velocity normalisation values
         # state["velocity"] = state["velocity"] / self.MOON_SPEED_WRT_EARTH

@@ -45,10 +45,10 @@ class LunarEnvironment(gym.Env, object):
         self.observation_space = Dict(
             {
                 "position": Box(low=-10, high=10, shape=(3,)),
-                "velocity": Box(low=-50, high=50, shape=(3,)),
+                # "velocity": Box(low=-50, high=50, shape=(3,)),
                 "mass": Box(low=0, high=1, shape=(1,)),
                 "delta_position": Box(low=-10, high=10, shape=(3,)),
-                "delta_velocity": Box(low=-50, high=50, shape=(3,)),
+                # "delta_velocity": Box(low=-50, high=50, shape=(3,)),
                 # todo: debug this time step getting out of bounds
                 "time_step": Box(low=0, high=1.2, shape=(1,))
             }
@@ -160,11 +160,12 @@ class LunarEnvironment(gym.Env, object):
         self.time_step = 0
         self.state = dict(
             delta_position=spacecraft_position - target_position,
-            delta_velocity=spacecraft_velocity - target_velocity,
+            # delta_velocity=spacecraft_velocity - target_velocity,
             mass=np.array([spacecraft_mass]),
-            position=spacecraft_position,
-            time_step=np.array([self.time_step]),
-            velocity=spacecraft_velocity)
+            position=spacecraft_position
+            # velocity=spacecraft_velocity,
+            # time_step=np.array([self.time_step])
+        )
 
         self.spacecraft_mass = self.state["mass"].item()
         self.spacecraft_position = self.state["position"]
@@ -282,7 +283,7 @@ class LunarEnvironment(gym.Env, object):
         self._update_state(
             fuel_mass=self.fuel_mass - mass_ejected,
             position=spacecraft_pos,
-            velocity=spacecraft_vel,
+            # velocity=spacecraft_vel,
             epoch=self.current_epoch + self.time_step_duration,
             time_step=self.time_step + 1,
             target_position=None,
@@ -293,11 +294,11 @@ class LunarEnvironment(gym.Env, object):
 
         self.state = dict(
             delta_position=self.delta_position,
-            delta_velocity=self.delta_velocity,
+            # delta_velocity=self.delta_velocity,
             mass=np.array([self.spacecraft_mass]),
-            position=self.spacecraft_position,
-            time_step=np.array([self.time_step]),
-            velocity=self.spacecraft_velocity,
+            position=self.spacecraft_position
+            # time_step=np.array([self.time_step]),
+            # velocity=self.spacecraft_velocity,
 
         )
 
