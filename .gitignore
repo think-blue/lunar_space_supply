@@ -4,3 +4,5 @@
 ./kernels/*
 data/*
 .DS_Store
+mlruns/
+__pycache__
