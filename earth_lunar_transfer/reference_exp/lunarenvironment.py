@@ -228,7 +228,8 @@ class LunarEnvironment(gym.Env, object):
 
         self.terminated_condition = False
         self.truncated_condition = False
-
+        self.previous_norm_pos_error = np.linalg.norm(
+            self.normalised_state['delta_position'])
         return self.normalised_state, info
 
     @staticmethod
