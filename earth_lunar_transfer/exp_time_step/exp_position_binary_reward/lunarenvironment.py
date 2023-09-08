@@ -24,8 +24,10 @@ class LunarEnvPositionBinaryReward(LunarEnvironment):
 
         position_threshold = 10000
         velocity_threshold = 40
-        
+        # import pdb; pdb.set_trace()
         positional_error_magnitude = np.linalg.norm(self.delta_position)
+        normalised_delta_pos = self.normalised_state['delta_position']
+        normalised_positional_error_magnitude = np.linalg.norm(normalised_delta_pos)
 
         goal_achieved_reward = 0
         if positional_error_magnitude <= position_threshold:
@@ -43,7 +45,7 @@ class LunarEnvPositionBinaryReward(LunarEnvironment):
             fuel_penalty = -100
 
         # static destination based on the end epoch
-        positional_reward = -positional_error_magnitude
+        positional_reward = -10*normalised_positional_error_magnitude
 
         # discounted_reward = 2 * math.pow(self.env_config["discount_factor"], self.time_step)
         reward = positional_reward + time_penalty + goal_achieved_reward + fuel_penalty
