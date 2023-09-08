@@ -4,14 +4,9 @@ from ray.rllib.algorithms import Algorithm
 # from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
 from earth_lunar_transfer.exp_time_step.exp_gravity_states.lunarenvironment_direction_based import LunarEnvForceHelper
 from earth_lunar_transfer.exp_time_step.exp_gravity_states.lunarenvironment_direction_based_position import LunarEnvForceHelper
-
-
 import json
 import matplotlib.pyplot as plt
 import numpy as np
-from ray.rllib.algorithms.a2c import A2CConfig
-from ray.rllib.algorithms.ppo import PPOConfig
-
 
 # checkpoint = "/home/chinmayd/ray_results/A2C_LunarEnvPosition_2023-08-22_11-43-42awd88n17/checkpoint_001002"
 # checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvNoGravity_2023-08-23_21-17-25bcxc6xs1/checkpoint_000702"
@@ -23,7 +18,10 @@ from ray.rllib.algorithms.ppo import PPOConfig
 
 # ppo discrete direction based reward
 # checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-08-25_19-03-17nyhj4zv6/checkpoint_008001"
-checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-08-28_22-31-31m4zpdfwo/checkpoint_002401"
+
+# ppo direction based reward position
+# checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-08-28_22-31-31m4zpdfwo/checkpoint_002101"
+checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-09-07_03-15-49m3le7zgz/checkpoint_001701"
 
 with open("env_config_test.json", "rb") as env_file:
     env_config_test = json.load(env_file)
@@ -31,23 +29,25 @@ with open("env_config_test.json", "rb") as env_file:
 with open("env_config_train.json", "rb") as env_file:
     env_config_train = json.load(env_file)
 
-a2c_config = (
-    PPOConfig()
-        .environment(env=LunarEnvForceHelper, env_config=env_config_test)
-        .training(grad_clip=3, lr_schedule=[[0, 1e-6], #0.00002 this works
-                                            [2e6, 0.00000006],
-                                            [20000000, 0.000000000001]])
-        .rollouts(num_rollout_workers=5, num_envs_per_worker=5)
-        .evaluation(evaluation_num_workers=1)
-        .framework("torch")
-        .debugging(log_level="INFO")
-        .offline_data(output="/nvme/lunar_space_supply/data/training_data/logs")
-)
+algo = Algorithm.from_checkpoint(checkpoint)
 
-a2c_algo = a2c_config.build()
-a2c_algo.restore(checkpoint_path=checkpoint)
+# a2c_config = (
+#     PPOConfig()
+#         .environment(env=LunarEnvForceHelper, env_config=env_config_test)
+#         .training(grad_clip=3, lr_schedule=[[0, 1e-6], #0.00002 this works
+#                                             [2e6, 0.00000006],
+#                                             [20000000, 0.000000000001]])
+#         .rollouts(num_rollout_workers=5, num_envs_per_worker=5)
+#         .evaluation(evaluation_num_workers=1)
+#         .framework("torch")
+#         .debugging(log_level="INFO")
+#         .offline_data(output="/nvme/lunar_space_supply/data/training_data/logs")
+# )
 
-env = LunarEnvForceHelper(env_config_test)
+# a2c_algo = a2c_config.build()
+# a2c_algo.restore(checkpoint_path=checkpoint)
+
+env = LunarEnvForceHelper(env_config_train)
 obs, _ = env.reset()
 
 rewards = []
@@ -63,9 +63,7 @@ terminated, truncated = False, False
 # env.spacecraft_velocity = np.array(env.source_planet.eph(env.current_epoch)[1]) + np.array([-735.0637737897396, -735.0637737897393, 1060.278455294141])
 # env.spacecraft_velocity = np.array([80, 0, 0])
 while not terminated and not truncated:
-    # action = np.array([0, 0, 0])
-    action = a2c_algo.compute_single_action(obs)
-    print(action)
+    action = algo.compute_single_action(obs)
     actions.append(action)
     obs, reward, terminated, truncated, info = env.step(action)
     rewards.append(reward)

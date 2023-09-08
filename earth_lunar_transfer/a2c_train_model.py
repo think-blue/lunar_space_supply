@@ -42,19 +42,39 @@ with mlflow.start_run(description=exp_description) as current_run:
     mlflow.log_params(env_config)
 
     # model_config = dict(fcnet_hiddens=[128, 128, 128], fcnet_activation="relu")
+    # a2c_config = (
+    #     # A2CConfig()
+    #     PPOConfig()
+    #     .environment(env=LunarEnvForceHelper, env_config=env_config)
+    #     .training(grad_clip=3, lr_schedule=[[0, 1e-6], #0.00002 this works
+    #                                         [2e6, 0.00000006],
+    #                                         [20000000, 0.000000000001]],
+    #               gamma=0.9)
+    #     .rollouts(num_rollout_workers=5, num_envs_per_worker=5)
+    #     .evaluation(evaluation_num_workers=1)
+    #     .framework("torch")
+    #     .debugging(log_level="INFO")
+    #     .offline_data(output="/nvme/lunar_space_supply/data/training_data/logs")
+    # )
+    agent_params = env_config["agent_params"]
     a2c_config = (
         # A2CConfig()
         PPOConfig()
         .environment(env=LunarEnvForceHelper, env_config=env_config)
-        .training(grad_clip=3, lr_schedule=[[0, 1e-6], #0.00002 this works
-                                            [2e6, 0.00000006],
-                                            [20000000, 0.000000000001]],
-                  gamma=0.9)
+        .training(grad_clip=agent_params["grad_clip"],
+                  lr=agent_params["lr"],
+                  gamma=agent_params["gamma"],
+                  vf_loss_coeff=agent_params["vf_loss_coeff"],
+                  clip_param=agent_params["clip_param"],
+                  entropy_coeff=agent_params["entropy_coeff"],
+                  lambda_=agent_params["lambda_"],
+                  vf_clip_param=agent_params["vf_clip_param"]
+                  )
         .rollouts(num_rollout_workers=5, num_envs_per_worker=5)
         .evaluation(evaluation_num_workers=1)
         .framework("torch")
         .debugging(log_level="INFO")
-        .offline_data(output="/nvme/lunar_space_supply/data/training_data/logs")
+        # .offline_data(output="/nvme/lunar_space_supply/data/training_data/logs")
     )
 
     a2c_algo = a2c_config.build()
@@ -72,7 +92,11 @@ with mlflow.start_run(description=exp_description) as current_run:
                           train_results['info']['learner']['default_policy']['learner_stats']['policy_loss'], iteration)
         mlflow.log_metric("vf_loss", train_results['info']['learner']['default_policy']['learner_stats']['vf_loss'],
                           iteration)
-        # mlflow.log_metric("episode_rewards", train_results['hist_stats']['episode_reward'])
+        mlflow.log_metric("vf_explained_var", train_results['info']['learner']['default_policy']['learner_stats']['vf_explained_var'],
+                          iteration)
+        mlflow.log_metric("entropy", train_results['info']['learner']['default_policy']['learner_stats']['entropy'], iteration)
+        mlflow.log_metric("mean_kl_loss", train_results['info']['learner']['default_policy']['learner_stats']['kl'], iteration)
+
         if iteration % 50 == 0:
             now = datetime.now()
             current_time = now.strftime("%H:%M:%S")

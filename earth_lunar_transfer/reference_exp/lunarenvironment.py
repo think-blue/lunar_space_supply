@@ -137,7 +137,7 @@ class LunarEnvironment(gym.Env, object):
                                  "delta_vel_z",
                                  "time_step", "epoch", "episode", "reward"] + [f"reward_{i}" for i in range(10)])
 
-        print(id(self))
+        print("\n***********\n", id(self), "\n*********\n")
 
     # def __new__(cls, env_config, *args, **kwargs):
     #     if not hasattr(cls, '_instance'):
@@ -150,20 +150,51 @@ class LunarEnvironment(gym.Env, object):
         self.current_epoch = self.env_config["start_epoch"]
 
         spacecraft_mass = self.env_config["payload_mass"] + self.env_config["fuel_mass"]
+
         source_planet_eph = self.source_planet.eph(self.current_epoch)
-        spacecraft_initial_speed = self.get_orbital_speed(self.source_object_orbit_radius, self.MU_MOON)
-        spacecraft_position, spacecraft_velocity = self.get_eph_from_orbital_angles(self.source_azimuthal_angle,
-                                                                                    self.source_inclination_angle,
-                                                                                    self.source_object_orbit_radius,
-                                                                                    spacecraft_initial_speed,
-                                                                                    source_planet_eph)
         destination_planet_eph = self.destination_planet.eph(self.current_epoch)
-        target_speed = self.get_orbital_speed(self.destination_object_orbit_radius, self.MU_EARTH)
-        target_position, target_velocity = self.get_eph_from_orbital_angles(self.dest_azimuthal_angle,
-                                                                            self.dest_inclination_angle,
-                                                                            self.destination_object_orbit_radius,
-                                                                            target_speed,
-                                                                            destination_planet_eph)
+
+        if self.env_config["orbits"] == "kepler":
+            spacecraft_relative_r, spacecraft_relative_v = pk.par2ic(E=[
+                self.env_config["kepler_source"]["semimajor_axis"],
+                self.env_config["kepler_source"]["ecc"],
+                self.env_config["kepler_source"]["inclination"],
+                self.env_config["kepler_source"]["ohm"],
+                self.env_config["kepler_source"]["omega"],
+                self.env_config["kepler_source"]["epoch"]
+            ],
+                mu=self.MU_MOON)
+
+            spacecraft_position = np.array(spacecraft_relative_r) + np.array(source_planet_eph[0])
+            spacecraft_velocity = np.array(spacecraft_relative_v) + np.array(source_planet_eph[1])
+
+            target_relative_r, target_relative_v = pk.par2ic(E=[
+                self.env_config["kepler_destination"]["semimajor_axis"],
+                self.env_config["kepler_destination"]["ecc"],
+                self.env_config["kepler_source"]["inclination"],
+                self.env_config["kepler_destination"]["ohm"],
+                self.env_config["kepler_destination"]["omega"],
+                self.env_config["kepler_destination"]["epoch"]
+            ],
+                mu=self.MU_EARTH)
+
+            target_position = np.array(target_relative_r) + np.array(destination_planet_eph[0])
+            target_velocity = np.array(target_relative_v) + np.array(destination_planet_eph[1])
+
+        else:
+            spacecraft_initial_speed = self.get_orbital_speed(self.source_object_orbit_radius, self.MU_MOON)
+            spacecraft_position, spacecraft_velocity = self.get_eph_from_orbital_angles(self.source_azimuthal_angle,
+                                                                                        self.source_inclination_angle,
+                                                                                        self.source_object_orbit_radius,
+                                                                                        spacecraft_initial_speed,
+                                                                                        source_planet_eph)
+
+            target_speed = self.get_orbital_speed(self.destination_object_orbit_radius, self.MU_EARTH)
+            target_position, target_velocity = self.get_eph_from_orbital_angles(self.dest_azimuthal_angle,
+                                                                                self.dest_inclination_angle,
+                                                                                self.destination_object_orbit_radius,
+                                                                                target_speed,
+                                                                                destination_planet_eph)
         self.time_step = 0
         self.state = dict(
             delta_position=spacecraft_position - target_position,
@@ -192,7 +223,8 @@ class LunarEnvironment(gym.Env, object):
 
         action = np.array([0, 0, 0])
         self.forces = self.accelerate_components(np.concatenate([self.spacecraft_position, self.spacecraft_velocity],
-                                                             axis=0),action , self.payload_mass + self.fuel_mass, self.current_epoch)
+                                                                axis=0), action, self.payload_mass + self.fuel_mass,
+                                                 self.current_epoch)
 
         if self.env_config["mlflow_configured"]:
             with mlflow.start_run(run_id=self.env_config["mlflow_run_id"]):
@@ -470,7 +502,6 @@ class LunarEnvironment(gym.Env, object):
             self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth,
             self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon
         )
-
 
     def transform_action(self, action):
         output_start = - self.env_config["max_thrust"]
