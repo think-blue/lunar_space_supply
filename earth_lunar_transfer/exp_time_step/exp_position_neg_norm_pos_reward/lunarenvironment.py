@@ -9,7 +9,7 @@ import sys
 from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
 
 
-class LunarEnvPositionBinaryReward(LunarEnvironment):
+class LunarEnvPositionNegNormPosReward(LunarEnvironment):
     def __init__(self, env_config):
 
         LunarEnvironment.__init__(self, env_config=env_config)

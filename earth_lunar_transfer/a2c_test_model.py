@@ -1,6 +1,6 @@
 import os
 from ray.rllib.algorithms import Algorithm
-from exp_time_step.exp_position_binary_reward.lunarenvironment import LunarEnvPositionBinaryReward
+from exp_time_step.exp_position_neg_norm_pos_reward.lunarenvironment import LunarEnvPositionNegNormPosReward
 import json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +18,7 @@ with open(f"{root_path}/env_config_test.json", "rb") as env_file:
 
 ppo_config = (
         PPOConfig()
-        .environment(env=LunarEnvPositionBinaryReward, env_config=env_config_train)
+        .environment(env=LunarEnvPositionNegNormPosReward, env_config=env_config_train)
         .training(**env_config_test["agent_params"])
         .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
         .resources(num_gpus=0)
@@ -28,7 +28,7 @@ ppo_config = (
 ppo_algo = ppo_config.build()
 ppo_algo.restore(checkpoint_path=checkpoint)
 
-env = LunarEnvPositionBinaryReward(env_config_test)
+env = LunarEnvPositionNegNormPosReward(env_config_test)
 obs, _ = env.reset()
 
 rewards = []

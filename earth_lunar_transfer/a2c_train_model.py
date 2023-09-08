@@ -12,7 +12,7 @@ import time
 # sys.path.append("/nvme/lunar_space_supply")
 # sys.path.append("/nvme/lunar_space_supply/earth_lunar_transfer")
 # from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
-from exp_time_step.exp_position_binary_reward.lunarenvironment import LunarEnvPositionBinaryReward
+from exp_time_step.exp_position_neg_norm_pos_reward.lunarenvironment import LunarEnvPositionNegNormPosReward
 
 import mlflow
 from datetime import datetime
@@ -38,7 +38,7 @@ with mlflow.start_run(description=exp_description) as current_run:
     # model_config = dict(fcnet_hiddens=[128, 128, 128], fcnet_activation="relu")
     ppo_config = (
         PPOConfig()
-        .environment(env=LunarEnvPositionBinaryReward, env_config=env_config)
+        .environment(env=LunarEnvPositionNegNormPosReward, env_config=env_config)
         .training(**env_config["agent_params"])
         .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
         .resources(num_gpus=1)
