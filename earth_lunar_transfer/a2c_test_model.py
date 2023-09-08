@@ -1,31 +1,34 @@
+import os
 from ray.rllib.algorithms import Algorithm
-from lunarenvironment import LunarEnvironment
+from exp_time_step.exp_position_binary_reward.lunarenvironment import LunarEnvPositionBinaryReward
 import json
 import matplotlib.pyplot as plt
 import numpy as np
-from ray.rllib.algorithms.a2c import A2CConfig
+from ray.rllib.algorithms.ppo import PPOConfig
 
-checkpoint = "/home/chinmayd/ray_results/A2C_LunarEnvironment_2023-08-08_02-57-14f0vq808b/checkpoint_000801"
+root_path="/home/e4r/Documents/Projects/IAC/lunar_space_supply/earth_lunar_transfer"
 
-with open("env_config_test.json", "rb") as env_file:
+checkpoint = "/home/e4r/ray_results/PPO_LunarEnvPositionBinaryReward_2023-09-05_12-22-01qfntxppe/checkpoint_001301"
+
+with open(f"{root_path}/env_config_test.json", "rb") as env_file:
     env_config_test = json.load(env_file)
 
-with open("env_config_test.json", "rb") as env_file:
+with open(f"{root_path}/env_config_test.json", "rb") as env_file:
     env_config_train = json.load(env_file)
 
-a2c_config = (
-    A2CConfig()
-    .environment(env=LunarEnvironment, env_config=env_config_train)
-    .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
-    .resources(num_gpus=1)
-    .training(train_batch_size=500)
-    .evaluation(evaluation_num_workers=1)
-)
+ppo_config = (
+        PPOConfig()
+        .environment(env=LunarEnvPositionBinaryReward, env_config=env_config_train)
+        .training(**env_config_test["agent_params"])
+        .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
+        .resources(num_gpus=0)
+        .evaluation(evaluation_num_workers=1)
+    )
 
-a2c_algo = a2c_config.build()
-a2c_algo.restore(checkpoint_path=checkpoint)
+ppo_algo = ppo_config.build()
+ppo_algo.restore(checkpoint_path=checkpoint)
 
-env = LunarEnvironment(env_config_test)
+env = LunarEnvPositionBinaryReward(env_config_test)
 obs, _ = env.reset()
 
 rewards = []
@@ -40,7 +43,8 @@ forces = []
 terminated, truncated = False, False
 while not terminated and not truncated:
     # action = np.array([0, 0, 0])
-    action = a2c_algo.compute_single_action(obs)
+    action = ppo_algo.compute_single_action(obs)
+    print(action)
     obs, reward, terminated, truncated, info = env.step(action)
     rewards.append(reward)
     delta_position_array.append(env.delta_position), delta_velocity_array.append(env.delta_velocity)
@@ -80,7 +84,9 @@ plt.show()
 # plt.title("forces")
 # plt.show()
 
-env.simulate(env.epoch_history, env.position_history, env.source_planet, env.destination_planet, ".", env.start_position, env.target_position)
+# import pdb; pdb.set_trace()
+print("running env.simulate")
+env.simulate(env.epoch_history, env.position_history, env.source_planet, env.destination_planet, "./temp.html", env.start_position, env.target_position)
 
 pass
 # env.simulate(env.epoch_history, env.position_history, env.source_planet, env.destination_planet, "../data/file.htm")

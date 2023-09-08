@@ -8,7 +8,8 @@
 
   "start_epoch": 0,
   "num_days": 3,
-  "time_step_duration": 0.020833,
+  "time_step_duration_2": 0.020833,
+  "time_step_duration": 0.0104167,
 
   "source_planet": "moon",
   "source_object_orbit_radius": 20000e3,
@@ -24,12 +25,22 @@
 
   "integration_steps": 10,
 
-  "kernel_path": "/nvme/lunar_space_geetansh/data/kernels/de441.bsp",
-  "data_path": "/nvme/lunar_space_geetansh/data/test_data",
+  "kernel_path": "/home/e4r/Documents/Projects/IAC/lunar_space_supply/data/kernels/de441.bsp",
+  "data_path": "/home/e4r/Documents/Projects/IAC/lunar_space_supply/data/testing",
 
-  "exp_name": "test_1",
+  "exp_name": "test_ppo_custom_param",
   "mlflow_configured": false,
 
-  "discount_factor": 0.99
+  "discount_factor": 0.95,
+  "agent_params" : {
+    "grad_clip":3,
+    "lr":1e-5,
+    "gamma":0.95,
+    "vf_loss_coeff":0.5,
+    "clip_param":0.2,
+    "entropy_coeff":0.01,
+    "lambda_":0.9,
+    "vf_clip_param":10000
+  }
 
 }

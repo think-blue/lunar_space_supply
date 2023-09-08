@@ -7,8 +7,8 @@ print (sys.path)
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.algorithms.dqn import DQNConfig
 import json
+import time
 
-import sys
 # sys.path.append("/nvme/lunar_space_supply")
 # sys.path.append("/nvme/lunar_space_supply/earth_lunar_transfer")
 # from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
@@ -17,8 +17,10 @@ from exp_time_step.exp_position_binary_reward.lunarenvironment import LunarEnvPo
 import mlflow
 from datetime import datetime
 
+root_path="/home/e4r/Documents/Projects/IAC/lunar_space_supply/earth_lunar_transfer"
+
 # read config_files
-with open("env_config_train.json", "rb") as config_file:
+with open(f"{root_path}/env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 exp_description = "state: state with fixed time period of 3 days\n" \
@@ -26,7 +28,7 @@ exp_description = "state: state with fixed time period of 3 days\n" \
                   "environment: continuous action space\n" \
                   "algorithm: A2C"
 
-mlflow.set_tracking_uri(uri="http://127.0.0.1:5001")
+mlflow.set_tracking_uri(uri="http://0.0.0.0:8000")
 mlflow.set_experiment(experiment_name=env_config["exp_name"])
 with mlflow.start_run(description=exp_description) as current_run:
     run_id = current_run.info.run_id
@@ -39,7 +41,7 @@ with mlflow.start_run(description=exp_description) as current_run:
         .environment(env=LunarEnvPositionBinaryReward, env_config=env_config)
         .training(**env_config["agent_params"])
         .rollouts(num_rollout_workers=2, num_envs_per_worker=2)
-        .resources(num_gpus=0)
+        .resources(num_gpus=1)
         .evaluation(evaluation_num_workers=1)
     )
 
@@ -47,7 +49,10 @@ with mlflow.start_run(description=exp_description) as current_run:
 
     print("training")
     for iteration in range(8005):
+        t0 = time.time()
         train_results = ppo_algo.train()
+        print(f"Time taken for training in iteration {iteration}: {time.time()-t0}sec")
+        # import pdb; pdb.set_trace()
         # print(train_results)
         mlflow.log_metric("episode_reward_max", train_results["episode_reward_max"], iteration)
         mlflow.log_metric("episode_reward_min", train_results["episode_reward_min"], iteration)
@@ -55,8 +60,14 @@ with mlflow.start_run(description=exp_description) as current_run:
         mlflow.log_metric("episodes_this_iter", train_results["episodes_this_iter"], iteration)
         mlflow.log_metric("episode_len_mean", train_results['episode_len_mean'], iteration)
         mlflow.log_metric("policy_loss",
-                          train_results['info']['learner']['default_policy']['learner_stats']['policy_loss'], iteration)
-        mlflow.log_metric("vf_loss", train_results['info']['learner']['default_policy']['learner_stats']['vf_loss'],
+                          train_results['info']['learner']['default_policy']['policy_loss'], iteration)
+        mlflow.log_metric("vf_loss", train_results['info']['learner']['default_policy']['vf_loss'],
+                          iteration)
+        mlflow.log_metric("vf_explained_var", train_results['info']['learner']['default_policy']['vf_explained_var'],
+                          iteration)
+        mlflow.log_metric("entropy", train_results['info']['learner']['default_policy']['entropy'],
+                          iteration)
+        mlflow.log_metric("mean_kl_loss", train_results['info']['learner']['default_policy']['mean_kl_loss'],
                           iteration)
         # mlflow.log_metric("episode_rewards", train_results['hist_stats']['episode_reward'])
         if iteration % 50 == 0:
