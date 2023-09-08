@@ -6,3 +6,4 @@ data/*
 .DS_Store
 mlruns/
 __pycache__
+*temp.html
