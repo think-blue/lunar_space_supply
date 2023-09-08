@@ -1,35 +1,64 @@
 {
   "action_space": "continuous",
-
   "payload_mass": 1000,
   "fuel_mass": 1000,
   "specific_impulse": 3000,
-  "max_thrust": 10,
+  "max_thrust": 50,
 
   "start_epoch": 0,
-  "num_days": 3,
-  "time_step_duration": 0.020833,
+  "num_days": 20,
+  "time_step_duration_half_hour": 0.020833,
+  "time_step_duration_15_min": 0.0104167,
+  "time_step_duration": 0.00694444,
 
   "source_planet": "moon",
+  "dest_planet": "earth",
+
+  "orbits": "kepler",
+
   "source_object_orbit_radius": 20000e3,
   "source_inclination_angle": 0,
   "source_azimuthal_angle": 0,
 
-  "dest_planet": "earth",
   "dest_object_orbit_radius": 40000e3,
   "dest_inclination_angle": 0,
   "dest_azimuthal_angle": 0,
+
+  "kepler_source": {
+    "ecc": 0.2,
+    "semimajor_axis": 20000e3,
+    "inclination": 0,
+    "ohm": 0,
+    "omega": 0,
+    "epoch": 1.57
+  },
+
+  "kepler_destination": {
+    "ecc": 0.2,
+    "semimajor_axis": 40000e3,
+    "inclination": 0,
+    "ohm": 0,
+    "omega": 0,
+    "epoch": 1.57
+  },
 
   "observer_body": "EARTH-MOON BARYCENTER",
 
   "integration_steps": 10,
 
-  "kernel_path": "/nvme/lunar_space_geetansh/data/kernels/de441.bsp",
-  "data_path": "/nvme/lunar_space_geetansh/data/test_data",
-
-  "exp_name": "test_1",
+  "kernel_path": "/nvme/lunar_space_supply/data/kernels/de441.bsp",
+  "data_path": "/nvme/lunar_space_supply/data/training_data",
+  "exp_name": "exp_gravity_states_direction_reward_position",
   "mlflow_configured": false,
 
-  "discount_factor": 0.99
-
+  "agent_params": {
+    "grad_clip": 3,
+    "lr": 1e-6,
+    "gamma": 0.95,
+    "vf_loss_coeff": 0.5,
+    "clip_param": 0.2,
+    "entropy_coeff": 0.001,
+    "lambda_": 0.85,
+    "vf_clip_param": 10000
+  }
 }
