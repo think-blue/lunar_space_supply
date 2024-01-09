@@ -20,4 +20,3 @@ plt.show()
 
 # force = 10 * (r / np.linalg.norm(r))
 # pk.propagate_lagrangian(r0=r, v0=v, m0=1000, thrust=force, tof=pi/4, mu=4.9e12)
-

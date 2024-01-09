@@ -1,14 +1,15 @@
 """
 script to test the functioning of the environment
 """
-from earth_lunar_transfer.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
-# from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
-# from earth_lunar_transfer.exp_time_step.exp_gravity_states.lunarenvironment_direction_based import LunarEnvForceHelper
-from earth_lunar_transfer.exp_time_step.exp_directed_force.lunarenvironment_directed_force import LunarEnvForceHelper
+
+# load the expriment class here
+from earth_lunar_transfer.experiments.exp_time_step.exp_directed_force.lunarenvironment_directed_force import \
+    LunarEnvForceHelper
 import json
 import numpy as np
 import matplotlib.pyplot as plt
 
+# load the config file for the experiment
 with open("/nvme/lunar_space_supply/earth_lunar_transfer/env_config_test.json", "rb") as config_file:
     env_config = json.load(config_file)
 

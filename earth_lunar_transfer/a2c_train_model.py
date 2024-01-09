@@ -11,7 +11,8 @@ import json
 # sys.path.append("/nvme/lunar_space_supply/earth_lunar_transfer")
 
 # load the environment class here
-from earth_lunar_transfer.exp_time_step.exp_directed_force.lunarenvironment_directed_force import LunarEnvForceHelper
+from earth_lunar_transfer.experiments.exp_time_step.exp_directed_force.lunarenvironment_directed_force import \
+    LunarEnvForceHelper
 import mlflow
 from datetime import datetime
 

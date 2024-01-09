@@ -1,20 +1,23 @@
 """
-This script is used to visualise a single episode data. Please import the relevant experiment class
+This script is used to visualise a single episode data saved during training. Please import the relevant experiment
+class, and load the required csv data to visualise.
 """
 
-from earth_lunar_transfer.lunarenvironment import LunarEnvironment
+# load the expriment class here
+from earth_lunar_transfer.experiments.reference_exp.lunarenvironment import LunarEnvironment
 import json
 import pandas as pd
 
+# load the config file for the experiment
 with open("earth_lunar_transfer/configs/env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
 
+# load the csv dara for the episode
 file_name = "140044978035472.csv"
-training_data_path = "/nvme/lunar_space_supply/data/test_data"
+data_path = "/nvme/lunar_space_supply/data/test_data"
 simulation_save_path = "/nvme/lunar_space_supply/data/simulation_figures"
 
-
-simulation_data = pd.read_csv(f"{training_data_path}/{file_name}", header=None)
+simulation_data = pd.read_csv(f"{data_path}/{file_name}", header=None)
 lunar_env = LunarEnvironment(env_config)
 
 save_file = file_name.split(sep=".")[0]

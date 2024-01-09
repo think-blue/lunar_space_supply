@@ -9,12 +9,16 @@ Also can check ranges of the values
 """
 
 # from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
-from earth_lunar_transfer.exp_time_step.exp_gravity_states.lunarenvironment_direction_based import LunarEnvForceHelper
+from earth_lunar_transfer.experiments.exp_time_step.exp_gravity_states.lunarenvironment_direction_based import \
+    LunarEnvForceHelper
+
 with open("/nvme/lunar_space_supply/earth_lunar_transfer/reference_exp/env_config_test.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 lunar_env = LunarEnvForceHelper(env_config)
-data = pd.read_csv("/nvme/lunar_space_supply/data/training_data/exp_gravity_states_direction_reward/140057304227152.csv", header=0, index_col=False)
+data = pd.read_csv(
+    "/nvme/lunar_space_supply/data/training_data/exp_gravity_states_direction_reward/140057304227152.csv", header=0,
+    index_col=False)
 delta_pos = data.iloc[:, 7:10]
 delta_vel = data.iloc[:, 10:13]
 
@@ -36,8 +40,8 @@ plt.show()
 min_pos_data.iloc[:, 16:20:1].plot()
 plt.show()
 
-
-distance_from_moon = min_pos_data.iloc[:, 1:4] - np.array([lunar_env.source_planet.eph(min_pos_data.iloc[i, 14])[0] for i in range(len(min_pos_data))])
+distance_from_moon = min_pos_data.iloc[:, 1:4] - np.array(
+    [lunar_env.source_planet.eph(min_pos_data.iloc[i, 14])[0] for i in range(len(min_pos_data))])
 dis_norm = np.linalg.norm(distance_from_moon, axis=-1)
 plt.title("distance from moon")
 plt.plot(dis_norm)
@@ -52,4 +56,3 @@ lunar_env.simulate(epoch_history=min_pos_data["epoch"],
                    source_point=lunar_env.start_position,
                    destination_point=lunar_env.target_position)
 pass
-

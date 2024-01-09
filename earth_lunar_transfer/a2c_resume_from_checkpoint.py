@@ -3,8 +3,8 @@ Use this training script to resume training from a checkpoint.
 """
 
 from ray.rllib.algorithms import Algorithm
-from earth_lunar_transfer.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
-from earth_lunar_transfer.exp_time_step.exp_no_gravity.lunarenvironment_negative import LunarEnvNoGravity
+from experiments.exp_time_step.exp_position.lunarenvironment import LunarEnvPosition
+from earth_lunar_transfer.experiments.exp_time_step.exp_no_gravity.lunarenvironment_negative import LunarEnvNoGravity
 import json
 from datetime import datetime
 from ray.rllib.algorithms.a2c import A2CConfig
@@ -12,7 +12,6 @@ from ray.rllib.algorithms.ppo import PPOConfig
 
 with open("earth_lunar_transfer/configs/env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
-
 
 # mention the file path of the checkpoint here
 checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvNoGravity_2023-08-23_19-33-27a_9w5khq/checkpoint_000301"

@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # load the relevant experiment/environment module here
-from earth_lunar_transfer.exp_time_step.exp_directed_force.lunarenvironment_directed_force import LunarEnvForceHelper
+from earth_lunar_transfer.experiments.exp_time_step.exp_directed_force.lunarenvironment_directed_force import \
+    LunarEnvForceHelper
 
 # load the experiment checkpoint here
 checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-09-12_22-31-15r58fiom2/checkpoint_000051"
@@ -55,7 +56,5 @@ plt.show()
 plt.plot(rewards), plt.title("reward"), plt.show()
 plt.plot(np.cumsum(rewards)), plt.title("cum. Reward"), plt.show()
 
-
 env.simulate(env.epoch_history, env.position_history, env.source_planet, env.destination_planet, "./myfile.html",
              env.start_position, env.target_position)
-
