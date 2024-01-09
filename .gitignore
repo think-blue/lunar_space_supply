@@ -5,3 +5,4 @@
 ./data/*
 .ds_store
 .idea
+.DS_Store
