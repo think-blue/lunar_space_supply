@@ -3,3 +3,5 @@
 ./earth_lunar_transfer/mlruns/*
 ./kernels/*
 ./data/*
+.ds_store
+.idea
