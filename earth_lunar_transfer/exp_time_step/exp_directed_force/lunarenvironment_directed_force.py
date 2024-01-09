@@ -1,10 +1,13 @@
-from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
 from gymnasium.spaces import Box, Dict, MultiDiscrete
 import numpy as np
 import mlflow
 from scipy.integrate import odeint
 
+# import the relevant experiment here
+from earth_lunar_transfer.reference_exp.lunarenvironment import LunarEnvironment
+
 class LunarEnvForceHelper(LunarEnvironment):
+
     def __init__(self, env_config):
         super().__init__(env_config)
         self.gravitation_force = None
@@ -15,7 +18,7 @@ class LunarEnvForceHelper(LunarEnvironment):
                 "velocity": Box(low=-800, high=800, shape=(3,)),
                 "mass": Box(low=0, high=1, shape=(1,)),
                 "delta_position": Box(low=-800, high=800, shape=(3,)),
-                "delta_velocity": Box(low=-500, high=500, shape=(3,)),
+                "delta_velocity": Box(low=-800, high=800, shape=(3,)),
                 "time_step": Box(low=0, high=1.2, shape=(1,)),
                 "acting_force": Box(low=-50, high=50, shape=(3,)),
                 "moon_pos": Box(low=-800, high=800, shape=(3,)),
@@ -44,7 +47,6 @@ class LunarEnvForceHelper(LunarEnvironment):
         self.previous_spacecraft_position = self.spacecraft_position
         self.previous_spacecraft_velocity = self.spacecraft_velocity
 
-
         if self.env_config["action_space"] == "discrete":
             action = self.transform_action(action)
         self.action = action
@@ -65,7 +67,6 @@ class LunarEnvForceHelper(LunarEnvironment):
 
         spacecraft_pos = np.array(detailed_spacecraft_state[-1, :3])
         spacecraft_vel = np.array(detailed_spacecraft_state[-1, 3:])
-
 
         mass_ejected = self._mass_ejected(action, len(time_array))
 
@@ -111,19 +112,22 @@ class LunarEnvForceHelper(LunarEnvironment):
         return self.normalised_state, self.reward, self.terminated_condition, self.truncated_condition, info
 
     def _get_reward(self):
-        position_threshold = 600e3
-        velocity_threshold = 400
+        position_threshold = 1000e3
+        velocity_threshold = 500
 
         goal_achieved_reward = 0
-        if np.linalg.norm(self.delta_position) <= position_threshold and np.linalg.norm(
-                self.delta_velocity) <= velocity_threshold:
+        if (
+                np.linalg.norm(self.delta_position) <= position_threshold and
+                np.linalg.norm(self.spacecraft_velocity) - np.linalg.norm(self.target_velocity) <= velocity_threshold
+        ):
             self.terminated_condition = True
             goal_achieved_reward = 2000
 
         time_penalty = 0
+        time_penalty = -1
         if self.time_step > self.max_time_steps:
             self.truncated_condition = True
-            time_penalty = -1000
+            # time_penalty = -1000
 
         fuel_penalty = 0
         if self.fuel_mass < 0:
@@ -131,14 +135,17 @@ class LunarEnvForceHelper(LunarEnvironment):
             fuel_penalty = -1000
 
         moon_region_penalty = 0
-        if np.linalg.norm(self.spacecraft_position - self.source_planet.eph(self.current_epoch)[0]) < 1737e3 + 300e3:
-            moon_region_penalty = -1000
+        if np.linalg.norm(self.spacecraft_position - self.source_planet.eph(self.current_epoch)[0]) < 1637e3 + 1000e3:
+            moon_region_penalty = -5/1e3 * ((1737e3 + 1000e3) - np.linalg.norm(self.spacecraft_position - self.source_planet.eph(self.current_epoch)[0]))
+        if np.linalg.norm(self.spacecraft_position - self.source_planet.eph(self.current_epoch)[0]) < 1737e3:
+            moon_region_penalty = -5000
             self.truncated_condition = True
 
         earth_region_penalty = 0
-        if np.linalg.norm(
-                self.spacecraft_position - self.destination_planet.eph(self.current_epoch)[0]) < 6738e3 + 300e3:
-            earth_region_penalty = -1000
+        if np.linalg.norm(self.spacecraft_position - self.destination_planet.eph(self.current_epoch)[0]) < 6638e3 + 2000e3:
+            earth_region_penalty = -5/1e3 * ((6638e3 + 2000e3) - np.linalg.norm(self.spacecraft_position - self.destination_planet.eph(self.current_epoch)[0]))
+        if np.linalg.norm(self.spacecraft_position - self.destination_planet.eph(self.current_epoch)[0]) < 6738e3 + 2000e3:
+            earth_region_penalty = -10000
             self.truncated_condition = True
 
         # space_penalty = 0
@@ -154,8 +161,8 @@ class LunarEnvForceHelper(LunarEnvironment):
 
         # based on magnitude (velocity)
         change_in_delta_mag_vel = (np.linalg.norm(self.previous_spacecraft_velocity - self.target_velocity)
-                               - np.linalg.norm(self.delta_velocity)) \
-                              / (self.MOON_SPEED_WRT_EARTH)
+                                   - np.linalg.norm(self.delta_velocity)) \
+                                  / (self.MOON_SPEED_WRT_EARTH)
         delta_mag_reward_vel = 50 * change_in_delta_mag_vel
 
         # based on direction (position)
@@ -174,7 +181,7 @@ class LunarEnvForceHelper(LunarEnvironment):
         #
         # cosine_vel_reward = cosine_similarity_vel_new - cosine_similarity_vel_old
 
-        reward = delta_mag_reward + delta_mag_reward_vel + cosine_reward +  \
+        reward = delta_mag_reward + delta_mag_reward_vel + cosine_reward + \
                  + time_penalty + fuel_penalty + earth_region_penalty + moon_region_penalty + goal_achieved_reward
 
         # print(positional_reward, mass_reward, velocity_reward)
@@ -182,7 +189,6 @@ class LunarEnvForceHelper(LunarEnvironment):
                              earth_region_penalty, moon_region_penalty, goal_achieved_reward]
 
         return reward, reward_components, self.truncated_condition, self.terminated_condition
-
 
     def accelerate(self, state_0, time, thrust, spacecraft_mass, epoch):
         position = state_0[0:3]
@@ -199,10 +205,46 @@ class LunarEnvForceHelper(LunarEnvironment):
 
         previous_delta_position = self.previous_spacecraft_position - self.target_position
         state_0 = (velocity,
-                   (thrust[0] * (-self.delta_position)) / self.spacecraft_mass +
-                   (thrust[1] * (-self.delta_position - (-previous_delta_position))) / self.spacecraft_mass +
-                   (thrust[2] * (self.destination_planet.eph(self.current_epoch)[0] - self.spacecraft_position)) / self.spacecraft_mass +
+                   ((thrust[0] * (-self.delta_position)) / self.spacecraft_mass +
+                    (thrust[1] * (-self.delta_position - (-previous_delta_position))) / self.spacecraft_mass +
+                    (thrust[2] * (self.destination_planet.eph(self.current_epoch)[
+                                      0] - self.spacecraft_position)) / self.spacecraft_mass) / 4e8 +
                    self.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun +
                    self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth +
                    self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon)
         return np.concatenate(state_0)
+
+    def accelerate_components(self, state_0, thrust, spacecraft_mass, epoch):
+        position = state_0[0:3]
+        velocity = state_0[3:]
+
+        r_vector_sun = np.array(self.sun.eph(epoch))[0] - position
+        r_mag_sun = np.linalg.norm(r_vector_sun)
+
+        r_vector_moon = np.array(self.source_planet.eph(epoch))[0] - position
+        r_mag_moon = np.linalg.norm(r_vector_moon)
+
+        r_vector_earth = np.array(self.destination_planet.eph(epoch))[0] - position
+        r_mag_earth = np.linalg.norm(r_vector_earth)
+        previous_delta_position = self.previous_spacecraft_position - self.target_position
+
+        return (
+            ((thrust[0] * (-self.delta_position)) / self.spacecraft_mass +
+            (thrust[1] * (-self.delta_position - (-previous_delta_position))) / self.spacecraft_mass +
+            (thrust[2] * (self.destination_planet.eph(self.current_epoch)[
+                              0] - self.spacecraft_position)) / self.spacecraft_mass)/4e8,
+            self.MU_SUN / np.power(r_mag_sun, 3) * r_vector_sun,
+            self.MU_EARTH / np.power(r_mag_earth, 3) * r_vector_earth,
+            self.MU_MOON / np.power(r_mag_moon, 3) * r_vector_moon
+        )
+
+    def _mass_ejected(self, thrust, time):
+        g_0 = 9.8
+        previous_delta_position = self.previous_spacecraft_position - self.target_position
+        thrust_actual = ((thrust[0] * (-self.delta_position)) / self.spacecraft_mass +
+            (thrust[1] * (-self.delta_position - (-previous_delta_position))) / self.spacecraft_mass +
+            (thrust[2] * (self.destination_planet.eph(self.current_epoch)[
+                              0] - self.spacecraft_position)) / self.spacecraft_mass)/4e8
+        thrust_mag = np.linalg.norm(thrust_actual)
+        mass_derivative = thrust_mag / (g_0 * self.specific_impulse)
+        return mass_derivative * time

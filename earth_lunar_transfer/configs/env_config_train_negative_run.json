@@ -9,7 +9,7 @@
   "num_days": 20,
   "time_step_duration_half_hour": 0.020833,
   "time_step_duration_15_min": 0.0104167,
-  "time_step_duration": 0.00694444,
+  "time_step_duration": 0.020833,
 
   "source_planet": "moon",
   "dest_planet": "earth",
@@ -48,7 +48,7 @@
 
   "kernel_path": "/nvme/lunar_space_supply/data/kernels/de441.bsp",
   "data_path": "/nvme/lunar_space_supply/data/training_data",
-  "exp_name": "exp_gravity_states_direction_reward_position",
+  "exp_name": "exp_gravity_states_directed_force",
   "mlflow_configured": false,
 
   "agent_params": {

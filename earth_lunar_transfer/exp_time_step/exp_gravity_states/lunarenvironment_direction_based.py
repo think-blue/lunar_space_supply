@@ -167,13 +167,13 @@ class LunarEnvForceHelper(LunarEnvironment):
         cosine_reward = 10 * cosine_similarity
 
         # based on direction (velocity)
-        # cosine_similarity_vel_old = np.inner(self.target_velocity, self.previous_spacecraft_velocity) / (
-        #     np.linalg.norm(self.target_velocity) * np.linalg.norm(self.previous_spacecraft_velocity)
-        # )
-        # cosine_similarity_vel_new = np.inner(self.target_velocity, self.spacecraft_velocity) / (
-        #     np.linalg.norm(self.target_velocity) * np.linalg.norm(self.spacecraft_velocity) )
-        #
-        # cosine_vel_reward = cosine_similarity_vel_new - cosine_similarity_vel_old
+        cosine_similarity_vel_old = np.inner(self.target_velocity, self.previous_spacecraft_velocity) / (
+            np.linalg.norm(self.target_velocity) * np.linalg.norm(self.previous_spacecraft_velocity)
+        )
+        cosine_similarity_vel_new = np.inner(self.target_velocity, self.spacecraft_velocity) / (
+            np.linalg.norm(self.target_velocity) * np.linalg.norm(self.spacecraft_velocity) )
+
+        cosine_vel_reward = cosine_similarity_vel_new - cosine_similarity_vel_old
 
         reward = delta_mag_reward + delta_mag_reward_vel + cosine_reward +  \
                  + time_penalty + fuel_penalty + earth_region_penalty + moon_region_penalty + goal_achieved_reward

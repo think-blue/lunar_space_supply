@@ -154,7 +154,7 @@ class LunarEnvironment(gym.Env, object):
         source_planet_eph = self.source_planet.eph(self.current_epoch)
         destination_planet_eph = self.destination_planet.eph(self.current_epoch)
 
-        if self.env_config["orbits"] == "kepler":
+        if "orbits" in self.env_config and self.env_config["orbits"] == "kepler":
             spacecraft_relative_r, spacecraft_relative_v = pk.par2ic(E=[
                 self.env_config["kepler_source"]["semimajor_axis"],
                 self.env_config["kepler_source"]["ecc"],
@@ -517,31 +517,54 @@ class LunarEnvironment(gym.Env, object):
                  destination_point, display=False):
         source_data, destination_data = LunarEnvironment._get_planetary_data(destination_planet, epoch_history,
                                                                              source_planet)
-        source_data, destination_data, position_data = np.array(source_data), np.array(destination_data), np.array(
-            position_history)
-        source_point = go.Scatter3d(x=[source_point[0], destination_point[0]],
-                                    y=[source_point[1], destination_point[1]],
-                                    z=[source_point[2], destination_point[2]],
-                                    mode="markers")
+        scaling_factor = 1e3
+        source_data, destination_data, position_data = np.array(source_data) / 1e3, np.array(destination_data) / 1e3, np.array(
+            position_history) / scaling_factor
+
+        source_point = go.Scatter3d(x=[source_point[0] / scaling_factor],
+                                    y=[source_point[1] / scaling_factor],
+                                    z=[source_point[2] / scaling_factor],
+                                    mode="markers",
+                                    name="source",
+                                    marker=dict(size=3))
+        dest_point = go.Scatter3d(x=[destination_point[0] / scaling_factor],
+                                  y=[destination_point[1] / scaling_factor],
+                                  z=[destination_point[2] / scaling_factor],
+                                  mode="markers",
+                                  name="target",
+                                  marker=dict(size=3))
         spacecraft_plot = go.Scatter3d(x=position_data[:, 0],
                                        y=position_data[:, 1],
                                        z=position_data[:, 2],
                                        mode="lines",
-                                       name="Spacecraft")
+                                       name="Spacecraft",
+                                       line=dict(width=3))
         source_plot = go.Scatter3d(x=source_data[:, 0],
                                    y=source_data[:, 1],
                                    z=source_data[:, 2],
                                    mode="lines",
-                                   name="moon")
+                                   name="moon",
+                                   line=dict(width=3))
         dest_plot = go.Scatter3d(x=destination_data[:, 0],
                                  y=destination_data[:, 1],
                                  z=destination_data[:, 2],
-                                 mode="lines",
-                                 name="earth")
+                                 mode="markers",
+                                 name="earth",
+                                 marker=dict(size=3))
 
-        figure = go.Figure(data=[source_point, spacecraft_plot, source_plot, dest_plot])
-        figure.update_layout(scene_aspectmode='data')
-        figure.write_html(f"{path}")
+        figure = go.Figure(data=[source_point, dest_point, spacecraft_plot, source_plot, dest_plot])
+        figure.update_layout(width=600, height=500,
+                             scene_aspectmode='auto',
+                             margin=dict(r=10, l=10, b=10, t=10),
+                             scene=dict(xaxis_title='X Axis (Kms)',
+                                        yaxis_title='Y Axis (Kms)',
+                                        zaxis_title='Z Axis (Kms)',
+                                        xaxis=dict(nticks=5),
+                                        yaxis=dict(nticks=5),
+                                        zaxis=dict(nticks=5))
+                             )
+        figure.write_image(f"{path}.png", scale=2)
+        figure.write_html(f"{path}.html")
 
     @staticmethod
     def animate(epoch_history, position_history, source_planet, destination_planet, path, display=False):

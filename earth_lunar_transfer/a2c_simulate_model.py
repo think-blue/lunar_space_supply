@@ -1,8 +1,12 @@
-from lunarenvironment import LunarEnvironment
+"""
+This script is used to visualise a single episode data. Please import the relevant experiment class
+"""
+
+from earth_lunar_transfer.lunarenvironment import LunarEnvironment
 import json
 import pandas as pd
 
-with open("env_config_train.json", "rb") as config_file:
+with open("earth_lunar_transfer/configs/env_config_train.json", "rb") as config_file:
     env_config = json.load(config_file)
 
 file_name = "140044978035472.csv"
