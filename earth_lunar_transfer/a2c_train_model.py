@@ -5,8 +5,8 @@ Before training, import the relevant experiment class and load it's correspondin
 
 from ray.rllib.algorithms.ppo import PPOConfig
 import json
+import sys
 
-# import sys
 # sys.path.append("/nvme/lunar_space_supply")
 # sys.path.append("/nvme/lunar_space_supply/earth_lunar_transfer")
 
@@ -17,12 +17,13 @@ import mlflow
 from datetime import datetime
 
 # read the config file here
-with open("earth_lunar_transfer/configs/env_config_train.json", "rb") as config_file:
+config_file_path = sys.argv[1]
+with open(config_file_path, "rb") as config_file:
     env_config = json.load(config_file)
 
-exp_description = """"mention the experiment description to be logged here"""
+exp_description = env_config["exp_description"]
 
-mlflow.set_tracking_uri(uri="http://127.0.0.1:5000")
+mlflow.set_tracking_uri(uri=env_config["mlflow_uri"])
 mlflow.set_experiment(experiment_name=env_config["exp_name"])
 with mlflow.start_run(description=exp_description) as current_run:
     run_id = current_run.info.run_id

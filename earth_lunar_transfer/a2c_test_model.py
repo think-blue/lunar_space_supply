@@ -8,23 +8,24 @@ from ray.rllib.algorithms import Algorithm
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
+# export PYTHONPATH="${PYTHONPATH}:/path/to/your/project/"
 
 # load the relevant experiment/environment module here
 from earth_lunar_transfer.experiments.exp_time_step.exp_directed_force.lunarenvironment_directed_force import \
     LunarEnvForceHelper
 
 # load the experiment checkpoint here
-checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-09-12_22-31-15r58fiom2/checkpoint_000051"
+# checkpoint = "/home/chinmayd/ray_results/PPO_LunarEnvForceHelper_2023-09-12_22-31-15r58fiom2/checkpoint_000051"
+checkpoint = sys.argv[2]
 
 # load the desired experiment's config here
-with open("../earth_lunar_transfer/configs/env_config_test.json", "rb") as env_file:
-    env_config_test = json.load(env_file)
-
+env_config_path = sys.argv[1]
 with open("../earth_lunar_transfer/configs/env_config_train.json", "rb") as env_file:
-    env_config_train = json.load(env_file)
+    env_config = json.load(env_file)
 
 algo = Algorithm.from_checkpoint(checkpoint)
-env = LunarEnvForceHelper(env_config_train)
+env = LunarEnvForceHelper(env_config)
 obs, _ = env.reset()
 rewards = []
 
@@ -56,5 +57,6 @@ plt.show()
 plt.plot(rewards), plt.title("reward"), plt.show()
 plt.plot(np.cumsum(rewards)), plt.title("cum. Reward"), plt.show()
 
-env.simulate(env.epoch_history, env.position_history, env.source_planet, env.destination_planet, "./myfile.html",
+save_path = "../data/simulation_figures/" + env_config["exp_name"] + "/" + "test_simulation"
+env.simulate(env.epoch_history, env.position_history, env.source_planet, env.destination_planet, save_path,
              env.start_position, env.target_position)

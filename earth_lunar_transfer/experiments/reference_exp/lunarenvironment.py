@@ -1,5 +1,6 @@
 import csv
 import os.path
+import sys
 
 import numpy as np
 import gymnasium as gym
@@ -564,6 +565,8 @@ class LunarEnvironment(gym.Env, object):
                                         yaxis=dict(nticks=5),
                                         zaxis=dict(nticks=5))
                              )
+        if not os.path.exists(os.path.dirname(path)):
+            os.mkdir(os.path.dirname(path))
         figure.write_image(f"{path}.png", scale=2)
         figure.write_html(f"{path}.html")
 
@@ -622,7 +625,8 @@ class LunarEnvironment(gym.Env, object):
                                         name="spacecraft", mode="markers+lines")]
                      ) for i in range(len(source_data))]
         )
-
+        if not os.path.exists(os.path.dirname(path)):
+            os.mkdir(os.path.dirname(path))
         figure.write_html(path)
 
         if display:
