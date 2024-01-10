@@ -1,5 +1,6 @@
 {
-  "action_space": "continuous",
+  "action_space": "discrete",
+  "_comment": "either 'discrete' or 'continuous'",
   "payload_mass": 1000,
   "fuel_mass": 1000,
   "specific_impulse": 3000,
@@ -41,7 +42,9 @@
   "kernel_path": "/nvme/lunar_space_supply/data/kernels/de441.bsp",
   "data_path": "/nvme/lunar_space_supply/data/training_data",
   "exp_name": "exp_gravity_states_direction_reward_position",
+  "exp_description": "experiment description to be logged",
   "mlflow_configured": false,
+  "mlflow_uri": "http://127.0.0.1:5000",
   "agent_params": {
     "grad_clip": 3,
     "lr": 1e-6,
